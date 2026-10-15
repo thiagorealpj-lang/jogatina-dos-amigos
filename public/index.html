@@ -290,10 +290,10 @@
       };
 
       pc.ontrack = (event) => {
-        const stream = event.streams[0];
         const track = event.track;
 
         if (track.kind === 'audio') {
+          const stream = event.streams[0] || new MediaStream([track]);
           let audioElem = document.getElementById(`audio-${peerId}`);
           if (!audioElem) {
             audioElem = document.createElement('audio');
@@ -324,11 +324,13 @@
             document.getElementById('video-grid').appendChild(container);
             videoElem = document.getElementById(`video-${peerId}`);
           }
-          videoElem.srcObject = stream;
+
+          // Cria um MediaStream limpo exclusivamente para a track de vídeo
+          const videoStream = new MediaStream([track]);
+          videoElem.srcObject = videoStream;
           
-          // Força o play para evitar a tela preta
           videoElem.onloadedmetadata = () => {
-            videoElem.play().catch(e => console.log('Autoplay bloqueado:', e));
+            videoElem.play().catch(e => console.log('Autoplay erro:', e));
           };
 
           verificarTelasAtivas();
@@ -427,7 +429,7 @@
         
         const videoLocalElem = document.getElementById('video-local');
         videoLocalElem.srcObject = localScreenStream;
-        videoLocalElem.muted = true; // Garante silêncio na própria pré-visualização
+        videoLocalElem.muted = true;
 
         const videoTrack = localScreenStream.getVideoTracks()[0];
         
