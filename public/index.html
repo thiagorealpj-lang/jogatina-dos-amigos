@@ -16,13 +16,14 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-gray-950 via-purple-950/20 to-black">
 
+  <!-- Tela de Login -->
   <div id="login-screen" class="flex-1 flex items-center justify-center p-4">
     <div class="bg-gray-900/80 border border-purple-500/30 p-8 rounded-2xl w-full max-w-md neon-border backdrop-blur-md">
       <h1 class="text-3xl font-cyber text-center font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2">
         JOGATINA DOS AMIGOS
       </h1>
       <p class="text-xs font-cyber text-center text-purple-400 tracking-widest mb-6">BY C0KZ</p>
-
+      
       <div class="space-y-4">
         <div>
           <label class="block text-xs font-cyber text-gray-400 mb-1">TEU NICK</label>
@@ -39,6 +40,7 @@
     </div>
   </div>
 
+  <!-- App Principal -->
   <div id="app-screen" class="hidden flex-1 flex flex-col h-screen p-4 gap-4 max-w-7xl mx-auto w-full">
     <header class="bg-gray-900/80 border border-purple-900/40 p-4 rounded-xl flex justify-between items-center backdrop-blur-md">
       <div>
@@ -57,15 +59,10 @@
 
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-hidden">
       <div class="lg:col-span-3 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between overflow-y-auto">
-        <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-        </div>
+        <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1"></div>
         <div class="flex justify-center gap-4 mt-4 pt-2 border-t border-gray-800/50">
-          <button id="btn-mic" onclick="toggleMic()" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-full transition">
-            🎤
-          </button>
-          <button onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">
-            📺 Compartilhar Tela
-          </button>
+          <button id="btn-mic" onclick="toggleMic()" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-full transition">🎤</button>
+          <button onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">📺 Compartilhar Tela</button>
         </div>
       </div>
 
@@ -98,13 +95,19 @@
 
       if (!nick || !roomId) return alert('Preencha o Nick e a Sala!');
 
-      socket = io();
+      // Força a conexão correta com o servidor no Render
+      socket = io({
+        transports: ['websocket', 'polling']
+      });
+
+      socket.on('connect', () => {
+        console.log('Conectado ao servidor:', socket.id);
+        socket.emit('join-room', { roomId, nick });
+      });
 
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('display-room').innerText = roomId;
-
-      socket.emit('join-room', { roomId, nick });
 
       socket.on('user-list', (users) => {
         document.getElementById('user-count').innerText = users.length;
