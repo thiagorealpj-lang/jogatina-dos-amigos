@@ -101,7 +101,7 @@
 
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-6 gap-4 overflow-hidden pb-2">
       
-      <!-- Lista de Canais com Utilizadores Online Embutidos (Estilo Discord) -->
+      <!-- Lista de Canais -->
       <div class="lg:col-span-1 bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col gap-3">
         <div class="flex justify-between items-center border-b border-gray-800 pb-2">
           <span class="font-cyber text-xs text-gray-400">CANAIS DE VOZ</span>
@@ -120,27 +120,34 @@
           </div>
         </div>
         
-        <!-- Painel de Controles -->
-        <div class="flex justify-center items-center gap-4 mt-4 pt-3 border-t border-gray-800/50">
-          <button id="btn-mic" onclick="toggleMic()" title="Mutar/Desmutar Microfone" class="bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
-            🎤
-          </button>
-          
-          <button id="btn-master-mute" onclick="toggleMasterMute()" title="Mutar Microfone e Áudio Geral do Servidor" class="bg-gray-700 hover:bg-gray-600 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
-            🎧
-          </button>
+        <!-- Painel de Controles e Opção de Áudio da Live -->
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mt-4 pt-3 border-t border-gray-800/50">
+          <div class="flex items-center gap-2 bg-gray-900/80 px-3 py-2 rounded-xl border border-purple-500/30">
+            <input id="chk-share-audio" type="checkbox" checked class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
+            <label for="chk-share-audio" class="text-xs text-purple-300 font-cyber cursor-pointer">Compartilhar Áudio do Jogo/Tela</label>
+          </div>
 
-          <button id="btn-screen" onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-xs px-6 py-3.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg cursor-pointer">
-            📺 Compartilhar Tela
-          </button>
+          <div class="flex items-center gap-3">
+            <button id="btn-mic" onclick="toggleMic()" title="Mutar/Desmutar Microfone" class="bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
+              🎤
+            </button>
+            
+            <button id="btn-master-mute" onclick="toggleMasterMute()" title="Mutar Microfone e Áudio Geral" class="bg-gray-700 hover:bg-gray-600 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
+              🎧
+            </button>
 
-          <button onclick="abrirArcade()" class="bg-cyan-600 hover:bg-cyan-500 font-cyber text-xs px-6 py-3.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg cursor-pointer text-black">
-            🕹️ Arcade Retrô
-          </button>
+            <button id="btn-screen" onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-xs px-6 py-3.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg cursor-pointer">
+              📺 Compartilhar Tela
+            </button>
+
+            <button onclick="abrirArcade()" class="bg-cyan-600 hover:bg-cyan-500 font-cyber text-xs px-6 py-3.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg cursor-pointer text-black">
+              🕹️ Arcade Retrô
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Barra Lateral da Sala Atual (Áudio e Chat) -->
+      <!-- Barra Lateral de Utilizadores Online -->
       <div class="lg:col-span-1 flex flex-col gap-4 overflow-hidden">
         <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-2/5 flex flex-col">
           <h3 class="font-cyber text-xs text-gray-400 mb-2">NESTA SALA (<span id="user-count">0</span>)</h3>
@@ -300,7 +307,6 @@
         socket.emit('join-room', { roomId, nick });
       });
 
-      // RECEbe o estado completo de todas as salas e utilizadores online em cada uma
       socket.on('update-all-rooms', (roomsData) => {
         globalRoomsData = roomsData;
         renderizarListaCanais();
@@ -704,9 +710,12 @@
       }
 
       try {
+        const shareAudio = document.getElementById('chk-share-audio').checked;
+        
+        // Pede a partilha de tela ativando opcionalmente o áudio do sistema/aba
         localScreenStream = await navigator.mediaDevices.getDisplayMedia({
           video: { frameRate: { ideal: 60, max: 60 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false
+          audio: shareAudio // Se marcado, captura o som do navegador/jogo com sucesso!
         });
         
         sharingUsers[socket.id] = true;
@@ -733,14 +742,21 @@
         videoLocalElem.muted = true;
 
         const videoTrack = localScreenStream.getVideoTracks()[0];
+        const audioTrack = localScreenStream.getAudioTracks()[0]; // Captura o som do jogo/aba partilhada
         
         for (const [peerId, { pc }] of Object.entries(peers)) {
-          const sender = pc.addTrack(videoTrack, localScreenStream);
-          const parameters = sender.getParameters();
+          // Envia a imagem da tela
+          const senderVideo = pc.addTrack(videoTrack, localScreenStream);
+          const parameters = senderVideo.getParameters();
           if (!parameters.encodings) parameters.encodings = [{}];
           parameters.encodings[0].maxBitrate = 4000000;
           parameters.encodings[0].maxFramerate = 60;
-          try { await sender.setParameters(parameters); } catch (e) {}
+          try { await senderVideo.setParameters(parameters); } catch (e) {}
+
+          // Se marcou para partilhar áudio e houver faixa de som da aba/jogo, envia separadamente sem tocar no microfone do chat
+          if (audioTrack) {
+            pc.addTrack(audioTrack, localScreenStream);
+          }
 
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
