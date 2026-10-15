@@ -15,10 +15,19 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Estrutura de salas do servidor estilo Discord (Ex: "Geral" já vem criada por defeito)
+// Armazena as salas e os objetos completos dos utilizadores em cada uma
 const rooms = {
   "Geral": []
 };
+
+function broadcastRoomsState() {
+  // Envia um resumo de quem está em cada sala para todos os clientes
+  const roomsSummary = {};
+  for (const [roomName, users] of Object.entries(rooms)) {
+    roomsSummary[roomName] = users.map(u => ({ id: u.id, nick: u.nick, isAdmin: u.isAdmin }));
+  }
+  io.emit('update-all-rooms', roomsSummary);
+}
 
 io.on('connection', (socket) => {
   let currentRoom = null;
@@ -35,29 +44,24 @@ io.on('connection', (socket) => {
 
     const isAdminDefault = nick.toLowerCase() === 'c0kz';
     
-    // Remove duplicados e adiciona o utilizador
     rooms[roomId] = rooms[roomId].filter(u => u.id !== socket.id);
     rooms[roomId].push({ id: socket.id, nick, isAdmin: isAdminDefault });
 
-    // Enviar lista atualizada de salas e utilizadores da sala atual
-    io.emit('rooms-list', Object.keys(rooms));
+    broadcastRoomsState();
     io.to(roomId).emit('user-list', rooms[roomId]);
     socket.to(roomId).emit('user-connected', { peerId: socket.id, nick });
 
-    // Criar nova sala / canal
     socket.on('create-room', ({ newRoomName }) => {
       newRoomName = newRoomName.trim();
       if (newRoomName && !rooms[newRoomName]) {
         rooms[newRoomName] = [];
-        io.emit('rooms-list', Object.keys(rooms));
+        broadcastRoomsState();
       }
     });
 
-    // Mudar de sala (clicar em canal diferente)
     socket.on('switch-room', ({ newRoomId }) => {
       if (!rooms[newRoomId]) return;
 
-      // Sai da sala anterior
       socket.leave(currentRoom);
       if (rooms[currentRoom]) {
         rooms[currentRoom] = rooms[currentRoom].filter(u => u.id !== socket.id);
@@ -65,11 +69,14 @@ io.on('connection', (socket) => {
         socket.to(currentRoom).emit('user-disconnected', socket.id);
       }
 
-      // Entra na nova sala
       currentRoom = newRoomId;
       socket.join(newRoomId);
-      rooms[newRoomId].push({ id: socket.id, nick: currentUserNick, isAdmin: isAdminDefault });
+      
+      const wasAdmin = rooms[newRoomId].find(u => u.id === socket.id)?.isAdmin || currentUserNick.toLowerCase() === 'c0kz';
+      rooms[newRoomId] = rooms[newRoomId].filter(u => u.id !== socket.id);
+      rooms[newRoomId].push({ id: socket.id, nick: currentUserNick, isAdmin: wasAdmin });
 
+      broadcastRoomsState();
       io.to(newRoomId).emit('user-list', rooms[newRoomId]);
       socket.to(newRoomId).emit('user-connected', { peerId: socket.id, nick: currentUserNick });
       socket.emit('switched-room-success', newRoomId);
@@ -88,14 +95,16 @@ io.on('connection', (socket) => {
     });
 
     socket.on('make-admin', ({ targetId }) => {
-      const user = rooms[currentRoom]?.find(u => u.id === targetId);
-      if (user) {
-        user.isAdmin = true;
-        io.to(currentRoom).emit('user-list', rooms[currentRoom]);
+      for (const rName in rooms) {
+        const user = rooms[rName].find(u => u.id === targetId);
+        if (user) {
+          user.isAdmin = true;
+          io.to(rName).emit('user-list', rooms[rName]);
+        }
       }
+      broadcastRoomsState();
     });
 
-    // Mover utilizador para outra sala (Admin/Dono)
     socket.on('move-user', ({ targetId, destinationRoom }) => {
       io.to(targetId).emit('force-move', { destinationRoom });
     });
@@ -113,6 +122,7 @@ io.on('connection', (socket) => {
         rooms[currentRoom] = rooms[currentRoom].filter(u => u.id !== socket.id);
         io.to(currentRoom).emit('user-list', rooms[currentRoom]);
         socket.to(currentRoom).emit('user-disconnected', socket.id);
+        broadcastRoomsState();
       }
     });
   });
