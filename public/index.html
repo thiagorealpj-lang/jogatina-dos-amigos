@@ -51,7 +51,7 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-gray-950 via-purple-950/20 to-black" onclick="desbloquearAudioGlobal()">
+<body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-gray-950 via-purple-950/20 to-black" onclick="desbloquearAudioGlobal(); fecharMenuMod();">
 
   <!-- Tela de Login -->
   <div id="login-screen" class="flex-1 flex items-center justify-center p-4">
@@ -69,6 +69,10 @@
         <div>
           <label class="block text-xs font-cyber text-gray-400 mb-1">CÓDIGO DA SALA</label>
           <input id="input-room" type="text" placeholder="Ex: sala-dos-crias" class="w-full bg-gray-950 border border-purple-900/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition">
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="chk-save" type="checkbox" checked class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
+          <label for="chk-save" class="text-xs text-gray-300 cursor-pointer">Salvar minhas credenciais para as próximas vezes</label>
         </div>
         <button onclick="entrarNaSala()" class="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-cyber font-bold py-3 rounded-lg transition transform active:scale-95 shadow-lg cursor-pointer">
           ENTRAR NA SALA
@@ -146,7 +150,14 @@
     </div>
   </div>
 
-  <!-- Modal do Arcade Retrô com Links Estáveis -->
+  <!-- Menu de Moderação Pop-up -->
+  <div id="mod-menu" class="hidden absolute bg-gray-900 border border-purple-500/60 rounded-xl p-2 z-50 shadow-2xl flex flex-col gap-1 w-36 backdrop-blur-md">
+    <span id="mod-target-name" class="text-[10px] text-gray-400 font-cyber px-2 py-0.5 border-b border-gray-800 truncate"></span>
+    <button onclick="executarKick()" class="text-left text-xs text-yellow-400 hover:bg-gray-800 px-2 py-1 rounded transition cursor-pointer font-cyber">⚡ Expulsar</button>
+    <button onclick="executarBan()" class="text-left text-xs text-red-400 hover:bg-gray-800 px-2 py-1 rounded transition cursor-pointer font-cyber">🚫 Banir</button>
+  </div>
+
+  <!-- Modal do Arcade Retrô -->
   <div id="arcade-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-md">
     <div class="bg-gray-900 border border-cyan-500/50 rounded-2xl w-full max-w-4xl p-4 flex flex-col gap-3 shadow-2xl">
       <div class="flex justify-between items-center border-b border-gray-800 pb-2">
@@ -176,13 +187,23 @@
     let mutedUsers = {};
     let userVolumes = {};
     let sharingUsers = {};
+    let bannedList = [];
     let isMicMuted = false;
     let isMasterMuted = false;
     let currentUsersList = [];
+    let modTargetId = null;
 
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
+
+    // Auto-carregar credenciais salvas no localStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedNick = localStorage.getItem('jogatina_nick');
+      const savedRoom = localStorage.getItem('jogatina_room');
+      if (savedNick) document.getElementById('input-nick').value = savedNick;
+      if (savedRoom) document.getElementById('input-room').value = savedRoom;
+    });
 
     function desbloquearAudioGlobal() {
       document.querySelectorAll('#audio-containers audio').forEach(audio => {
@@ -203,7 +224,6 @@
       const container = document.getElementById('arcade-screen-container');
       let gameUrl = '';
 
-      // Servidores de emulação web públicos e estáveis
       if (tipo === 'pacman') {
         gameUrl = 'https://free-classic-games.com/pacman/';
       } else if (tipo === 'tetris') {
@@ -222,6 +242,16 @@
       roomId = document.getElementById('input-room').value.trim();
 
       if (!nick || !roomId) return alert('Preencha o Nick e a Sala!');
+
+      if (bannedList.includes(nick.toLowerCase())) {
+        return alert('Você foi banido desta sala!');
+      }
+
+      // Salvar credenciais se checkbox estiver ativo
+      if (document.getElementById('chk-save').checked) {
+        localStorage.setItem('jogatina_nick', nick);
+        localStorage.setItem('jogatina_room', roomId);
+      }
 
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app-screen').classList.remove('hidden');
@@ -276,6 +306,17 @@
         chatBox.scrollTop = chatBox.scrollHeight;
       });
 
+      socket.on('kicked', () => {
+        alert('Você foi removido da sala pelo moderador!');
+        location.reload();
+      });
+
+      socket.on('banned', () => {
+        alert('Você foi banido da sala pelo moderador!');
+        bannedList.push(nick.toLowerCase());
+        location.reload();
+      });
+
       socket.on('user-disconnected', (peerId) => {
         if (peers[peerId]) {
           peers[peerId].pc.close();
@@ -290,6 +331,39 @@
         verificarTelasAtivas();
         renderizarListaUsuarios();
       });
+    }
+
+    function isOwner() {
+      return nick.toLowerCase() === 'c0kz';
+    }
+
+    function abrirMenuMod(e, userId, userNick) {
+      if (!isOwner() || userId === socket.id) return;
+      e.stopPropagation();
+      modTargetId = userId;
+      const menu = document.getElementById('mod-menu');
+      document.getElementById('mod-target-name').innerText = userNick;
+      menu.style.top = `${e.clientY + 5}px`;
+      menu.style.left = `${e.clientX - 100}px`;
+      menu.classList.remove('hidden');
+    }
+
+    function fecharMenuMod() {
+      document.getElementById('mod-menu').classList.add('hidden');
+    }
+
+    function executarKick() {
+      if (modTargetId && socket) {
+        socket.emit('kick-user', { targetId: modTargetId });
+      }
+      fecharMenuMod();
+    }
+
+    function executarBan() {
+      if (modTargetId && socket) {
+        socket.emit('ban-user', { targetId: modTargetId });
+      }
+      fecharMenuMod();
     }
 
     function monitorarVozLocal(stream) {
@@ -351,22 +425,24 @@
         const isMuted = mutedUsers[u.id];
         const isSharing = sharingUsers[u.id];
         const currentVol = userVolumes[u.id] !== undefined ? userVolumes[u.id] : 100;
+        const isUserOwner = u.nick.toLowerCase() === 'c0kz';
 
         return `
-          <div id="user-card-${u.id}" class="flex flex-col p-2 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs transition-all gap-1.5">
+          <div id="user-card-${u.id}" onclick="abrirMenuMod(event, '${u.id}', '${u.nick}')" class="flex flex-col p-2 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs transition-all gap-1.5 ${isOwner() && !isMe ? 'cursor-pointer hover:border-purple-500/80' : ''}">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2 overflow-hidden">
                 <span class="text-cyan-300 font-bold truncate">${u.nick} ${isMe ? '(Você)' : ''}</span>
+                ${isUserOwner ? '<span class="bg-purple-600 text-white text-[8px] px-1 py-0.2 rounded font-cyber font-bold">DONO</span>' : ''}
                 ${isSharing ? '<span class="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded font-cyber live-badge font-bold">🔴 LIVE</span>' : ''}
               </div>
               ${!isMe ? `
-                <button onclick="toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-1 rounded transition shrink-0 cursor-pointer">
+                <button onclick="event.stopPropagation(); toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-1 rounded transition shrink-0 cursor-pointer">
                   ${isMuted ? '🔇 Mutado' : '🔊 Ouvindo'}
                 </button>
               ` : ''}
             </div>
             ${!isMe ? `
-              <div class="flex items-center gap-2 pt-1 border-t border-gray-700/40">
+              <div class="flex items-center gap-2 pt-1 border-t border-gray-700/40" onclick="event.stopPropagation()">
                 <span class="text-[10px] text-gray-400">Vol: <span id="vol-text-${u.id}">${currentVol}%</span></span>
                 <input type="range" min="0" max="200" value="${currentVol}" oninput="alterarVolumeUser('${u.id}', this.value)" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
               </div>
