@@ -22,7 +22,9 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     if (!rooms[roomId]) rooms[roomId] = [];
 
-    rooms[roomId].push({ id: socket.id, nick });
+    // O C0kz entra sempre como dono supremo / admin automático
+    const isAdminDefault = nick.toLowerCase() === 'c0kz';
+    rooms[roomId].push({ id: socket.id, nick, isAdmin: isAdminDefault });
 
     io.to(roomId).emit('user-list', rooms[roomId]);
     socket.to(roomId).emit('user-connected', { peerId: socket.id, nick });
@@ -39,7 +41,15 @@ io.on('connection', (socket) => {
       io.to(to).emit('signal', { from: socket.id, signal, type, nick });
     });
 
-    // --- NOVOS EVENTOS DE MODERAÇÃO (KICK E BAN) ---
+    // --- COMANDOS DE MODERAÇÃO ---
+    socket.on('make-admin', ({ targetId }) => {
+      const user = rooms[roomId]?.find(u => u.id === targetId);
+      if (user) {
+        user.isAdmin = true;
+        io.to(roomId).emit('user-list', rooms[roomId]);
+      }
+    });
+
     socket.on('kick-user', ({ targetId }) => {
       io.to(targetId).emit('kicked');
     });
@@ -47,7 +57,7 @@ io.on('connection', (socket) => {
     socket.on('ban-user', ({ targetId }) => {
       io.to(targetId).emit('banned');
     });
-    // ----------------------------------------------
+    // ----------------------------
 
     socket.on('disconnect', () => {
       if (rooms[roomId]) {
