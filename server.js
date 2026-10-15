@@ -22,7 +22,6 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     if (!rooms[roomId]) rooms[roomId] = [];
 
-    // O C0kz entra sempre como dono supremo / admin automático
     const isAdminDefault = nick.toLowerCase() === 'c0kz';
     rooms[roomId].push({ id: socket.id, nick, isAdmin: isAdminDefault });
 
@@ -41,7 +40,6 @@ io.on('connection', (socket) => {
       io.to(to).emit('signal', { from: socket.id, signal, type, nick });
     });
 
-    // --- COMANDOS DE MODERAÇÃO CORRIGIDOS ---
     socket.on('make-admin', ({ targetId }) => {
       const user = rooms[roomId]?.find(u => u.id === targetId);
       if (user) {
@@ -50,28 +48,14 @@ io.on('connection', (socket) => {
       }
     });
 
+    // SISTEMA DE KICK E BAN GLOBAL PARA A SALA
     socket.on('kick-user', ({ targetId }) => {
-      // Avisa o cliente específico para ser kickado
-      io.to(targetId).emit('kicked');
-      
-      // Força o socket do alvo a sair da sala no servidor
-      const targetSocket = io.sockets.sockets.get(targetId);
-      if (targetSocket) {
-        targetSocket.leave(roomId);
-      }
+      io.to(roomId).emit('force-kick', { targetId });
     });
 
     socket.on('ban-user', ({ targetId }) => {
-      // Avisa o cliente específico para ser banido
-      io.to(targetId).emit('banned');
-      
-      // Força o socket do alvo a sair da sala no servidor
-      const targetSocket = io.sockets.sockets.get(targetId);
-      if (targetSocket) {
-        targetSocket.leave(roomId);
-      }
+      io.to(roomId).emit('force-ban', { targetId });
     });
-    // ----------------------------------------
 
     socket.on('disconnect', () => {
       if (rooms[roomId]) {
