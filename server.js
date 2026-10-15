@@ -39,6 +39,16 @@ io.on('connection', (socket) => {
       io.to(to).emit('signal', { from: socket.id, signal, type, nick });
     });
 
+    // --- NOVOS EVENTOS DE MODERAÇÃO (KICK E BAN) ---
+    socket.on('kick-user', ({ targetId }) => {
+      io.to(targetId).emit('kicked');
+    });
+
+    socket.on('ban-user', ({ targetId }) => {
+      io.to(targetId).emit('banned');
+    });
+    // ----------------------------------------------
+
     socket.on('disconnect', () => {
       if (rooms[roomId]) {
         rooms[roomId] = rooms[roomId].filter(u => u.id !== socket.id);
