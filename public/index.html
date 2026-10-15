@@ -19,7 +19,6 @@
     }
     .live-badge { animation: pulse-live 1.5s infinite; }
     .speaking-glow { border: 2px solid #10b981 !important; box-shadow: 0 0 10px #10b981; }
-    /* Tela de partilha quadrada e compacta por defeito */
     .video-box {
       width: 280px !important;
       height: 280px !important;
@@ -90,12 +89,10 @@
         
         <!-- Painel de Controles -->
         <div class="flex justify-center items-center gap-3 mt-4 pt-3 border-t border-gray-800/50">
-          <!-- Botão Microfone (Apenas Ícone) -->
           <button id="btn-mic" onclick="toggleMic()" title="Mutar/Desmutar Microfone" class="bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
             🎤
           </button>
           
-          <!-- Botão Master Mute (Microfone + Fone / Silenciar tudo) -->
           <button id="btn-master-mute" onclick="toggleMasterMute()" title="Mutar Microfone e Áudio Geral do Servidor" class="bg-gray-700 hover:bg-gray-600 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
             🎧
           </button>
@@ -298,7 +295,7 @@
       peers[peerId] = { pc, nick: peerNick };
 
       pc.addTransceiver('audio', { direction: 'sendrecv' });
-      pc.addTransceiver('video', { direction: 'sendrecv' });
+      const videoTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
 
       if (localAudioStream) {
         localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream));
@@ -480,7 +477,15 @@
       }
 
       try {
-        localScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 }, audio: false });
+        // Otimização para 60 FPS e alta nitidez (Full HD / 60fps)
+        localScreenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            frameRate: { ideal: 60, max: 60 },
+            width: { ideal: 1920, max: 1920 },
+            height: { ideal: 1080, max: 1080 }
+          },
+          audio: false
+        });
         
         sharingUsers[socket.id] = true;
         renderizarListaUsuarios();
@@ -503,12 +508,23 @@
         
         const videoLocalElem = document.getElementById('video-local');
         videoLocalElem.srcObject = localScreenStream;
-        videoLocalElem.muted = true; // Impede qualquer eco da própria voz ou áudio local
+        videoLocalElem.muted = true;
 
         const videoTrack = localScreenStream.getVideoTracks()[0];
         
         for (const [peerId, { pc }] of Object.entries(peers)) {
-          pc.addTrack(videoTrack, localScreenStream);
+          const sender = pc.addTrack(videoTrack, localScreenStream);
+          // Otimização de parâmetros de codificação para priorizar nitidez e 60fps
+          const parameters = sender.getParameters();
+          if (!parameters.encodings) {
+            parameters.encodings = [{}];
+          }
+          parameters.encodings[0].maxBitrate = 4000000; // 4 Mbps para alta qualidade
+          parameters.encodings[0].maxFramerate = 60;
+          try {
+            await sender.setParameters(parameters);
+          } catch (e) {}
+
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           socket.emit('signal', { to: peerId, signal: offer, type: 'offer', nick });
