@@ -124,10 +124,59 @@
         console.warn('Microfone não ativado:', err);
       }
 
+      // Inicializa a interface imediatamente
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('app-screen').classList.remove('hidden');
+      document.getElementById('display-room').innerText = roomId;
+
+      // Conecta ao Socket.io
       socket = io({ transports: ['websocket', 'polling'] });
 
       socket.on('connect', () => {
+        console.log('Conectado ao servidor, entrando na sala...');
         socket.emit('join-room', { roomId, nick });
       });
 
-      document.getElementById('
+      socket.on('user-connected', ({ peerId, nick: peerNick }) => {
+        iniciarConexaoWebRTC(peerId, peerNick, true);
+      });
+
+      socket.on('signal', async ({ from, signal, type, nick: peerNick }) => {
+        if (!peers[from]) {
+          iniciarConexaoWebRTC(from, peerNick, false);
+        }
+
+        const peer = peers[from].pc;
+
+        if (type === 'offer') {
+          await peer.setRemoteDescription(new RTCSessionDescription(signal));
+          const answer = await peer.createAnswer();
+          await peer.setLocalDescription(answer);
+          socket.emit('signal', { to: from, signal: answer, type: 'answer', nick });
+        } else if (type === 'answer') {
+          await peer.setRemoteDescription(new RTCSessionDescription(signal));
+        } else if (type === 'candidate') {
+          try {
+            await peer.addIceCandidate(new RTCIceCandidate(signal));
+          } catch (e) {}
+        }
+      });
+
+      socket.on('user-list', (users) => {
+        currentUsersList = users;
+        renderizarListaUsuarios();
+      });
+
+      socket.on('receive-chat', ({ nick, msg, time }) => {
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML += `<div><span class="text-gray-500">[${time}]</span> <strong class="text-purple-400">${nick}:</strong> ${msg}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+
+      socket.on('user-disconnected', (peerId) => {
+        if (peers[peerId]) {
+          peers[peerId].pc.close();
+          delete peers[peerId];
+        }
+        const videoElem = document.getElementById(`video-${peerId}`);
+        if (videoElem
