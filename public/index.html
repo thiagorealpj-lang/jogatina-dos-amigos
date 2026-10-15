@@ -305,20 +305,16 @@
         chatBox.scrollTop = chatBox.scrollHeight;
       });
 
-      // ESCUTA O COMANDO DE KICK GLOBAL E VALIDA SE É O PRÓPRIO UTILIZADOR
-      socket.on('force-kick', ({ targetId }) => {
-        if (targetId === socket.id) {
-          alert('Você foi removido da sala pelo moderador!');
-          location.reload();
-        }
+      // ESCUTA DIRETA DE KICK E BAN RECEBIDA DO SERVIDOR
+      socket.on('kicked', () => {
+        alert('Você foi removido da sala pelo moderador!');
+        location.reload();
       });
 
-      socket.on('force-ban', ({ targetId }) => {
-        if (targetId === socket.id) {
-          alert('Você foi banido da sala pelo moderador!');
-          bannedList.push(nick.toLowerCase());
-          location.reload();
-        }
+      socket.on('banned', () => {
+        alert('Você foi banido da sala pelo moderador!');
+        bannedList.push(nick.toLowerCase());
+        location.reload();
       });
 
       socket.on('user-disconnected', (peerId) => {
