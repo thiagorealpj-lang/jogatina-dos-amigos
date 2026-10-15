@@ -81,7 +81,7 @@
     </div>
   </div>
 
-  <!-- App Principal (Estilo Discord) -->
+  <!-- App Principal -->
   <div id="app-screen" class="hidden flex-1 flex flex-col h-screen p-4 gap-4 max-w-[98%] mx-auto w-full">
     <header class="bg-gray-900/80 border border-purple-900/40 p-4 rounded-xl flex justify-between items-center backdrop-blur-md">
       <div class="flex items-baseline gap-3">
@@ -101,16 +101,16 @@
 
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-6 gap-4 overflow-hidden pb-2">
       
-      <!-- Lista de Canais / Salas (Estilo Discord - Coluna 1) -->
+      <!-- Lista de Canais com Utilizadores Online Embutidos (Estilo Discord) -->
       <div class="lg:col-span-1 bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col gap-3">
         <div class="flex justify-between items-center border-b border-gray-800 pb-2">
           <span class="font-cyber text-xs text-gray-400">CANAIS DE VOZ</span>
           <button onclick="pedirCriarSala()" class="bg-purple-950 border border-purple-500/50 text-cyan-400 font-bold px-2 py-0.5 rounded hover:bg-purple-900 cursor-pointer text-xs" title="Criar Nova Sala">＋</button>
         </div>
-        <div id="rooms-list-container" class="flex-1 overflow-y-auto space-y-1 pr-1"></div>
+        <div id="rooms-list-container" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
       </div>
 
-      <!-- Grade de Vídeos / Telas / Arcade Retrô (Colunas 4) -->
+      <!-- Grade de Vídeos / Telas / Arcade Retrô -->
       <div class="lg:col-span-4 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between overflow-y-auto relative">
         <div id="main-content-area" class="flex-1 flex flex-col justify-center items-center">
           <div id="video-grid" class="flex flex-wrap gap-4 w-full content-start py-2">
@@ -140,10 +140,10 @@
         </div>
       </div>
 
-      <!-- Barra Lateral de Utilizadores Online e Chat (Coluna 1) -->
+      <!-- Barra Lateral da Sala Atual (Áudio e Chat) -->
       <div class="lg:col-span-1 flex flex-col gap-4 overflow-hidden">
         <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-2/5 flex flex-col">
-          <h3 class="font-cyber text-xs text-gray-400 mb-2">ONLINE (<span id="user-count">0</span>)</h3>
+          <h3 class="font-cyber text-xs text-gray-400 mb-2">NESTA SALA (<span id="user-count">0</span>)</h3>
           <div id="users-list" class="flex-1 overflow-y-auto space-y-2 text-sm pr-1"></div>
         </div>
 
@@ -159,7 +159,7 @@
     </div>
   </div>
 
-  <!-- Menu de Moderação Pop-up (Com opção de Mover para Sala) -->
+  <!-- Menu de Moderação Pop-up -->
   <div id="mod-menu" class="hidden absolute bg-gray-900 border border-purple-500/60 rounded-xl p-2 z-50 shadow-2xl flex flex-col gap-1 w-44 backdrop-blur-md">
     <span id="mod-target-name" class="text-[10px] text-gray-400 font-cyber px-2 py-0.5 border-b border-gray-800 truncate"></span>
     <button onclick="executarAdmin()" class="text-left text-xs text-cyan-400 hover:bg-gray-800 px-2 py-1 rounded transition cursor-pointer font-cyber">👑 Tornar Admin</button>
@@ -202,7 +202,7 @@
     let userVolumes = {};
     let sharingUsers = {};
     let bannedList = [];
-    let allRoomsList = [];
+    let globalRoomsData = {};
     let isMicMuted = false;
     let isMasterMuted = false;
     let currentUsersList = [];
@@ -254,7 +254,6 @@
 
     function mudarDeSala(novaSala) {
       if (novaSala === roomId) return;
-      // Fecha conexões antigas antes de mudar
       Object.keys(peers).forEach(peerId => {
         peers[peerId].pc.close();
         delete peers[peerId];
@@ -301,8 +300,9 @@
         socket.emit('join-room', { roomId, nick });
       });
 
-      socket.on('rooms-list', (rooms) => {
-        allRoomsList = rooms;
+      // RECEbe o estado completo de todas as salas e utilizadores online em cada uma
+      socket.on('update-all-rooms', (roomsData) => {
+        globalRoomsData = roomsData;
         renderizarListaCanais();
       });
 
@@ -379,13 +379,31 @@
 
     function renderizarListaCanais() {
       const container = document.getElementById('rooms-list-container');
-      container.innerHTML = allRoomsList.map(room => {
+      const roomNames = Object.keys(globalRoomsData);
+
+      container.innerHTML = roomNames.map(room => {
         const isActive = room === roomId;
+        const usersInRoom = globalRoomsData[room] || [];
+
+        const usersHtml = usersInRoom.map(u => {
+          const isOwner = u.nick.toLowerCase() === 'c0kz';
+          return `
+            <div class="pl-6 py-0.5 text-[11px] flex items-center gap-1.5 text-gray-300 truncate">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+              <span class="truncate">${u.nick}</span>
+              ${isOwner ? '<span class="text-[8px] bg-purple-600 text-white px-1 rounded font-cyber">DONO</span>' : (u.isAdmin ? '<span class="text-[8px] bg-cyan-600 text-black px-1 rounded font-cyber">ADMIN</span>' : '')}
+            </div>
+          `;
+        }).join('');
+
         return `
-          <button onclick="mudarDeSala('${room}')" class="w-full text-left px-3 py-2 rounded-lg text-xs font-cyber transition cursor-pointer flex items-center justify-between ${isActive ? 'bg-purple-900/60 text-cyan-300 font-bold border border-purple-500/40' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}">
-            <span>🔊 ${room}</span>
-            ${isActive ? '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>' : ''}
-          </button>
+          <div class="flex flex-col gap-0.5">
+            <button onclick="mudarDeSala('${room}')" class="w-full text-left px-3 py-2 rounded-lg text-xs font-cyber transition cursor-pointer flex items-center justify-between ${isActive ? 'bg-purple-900/60 text-cyan-300 font-bold border border-purple-500/40' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}">
+              <span>🔊 ${room}</span>
+              <span class="text-[10px] bg-gray-800 px-1.5 py-0.2 rounded text-gray-400">${usersInRoom.length}</span>
+            </button>
+            <div class="flex flex-col">${usersHtml}</div>
+          </div>
         `;
       }).join('');
     }
@@ -403,9 +421,9 @@
       const menu = document.getElementById('mod-menu');
       document.getElementById('mod-target-name').innerText = userNick;
 
-      // Renderizar opções de mover para outras salas
+      const allRooms = Object.keys(globalRoomsData);
       const moveContainer = document.getElementById('move-rooms-list');
-      moveContainer.innerHTML = allRoomsList.map(r => `
+      moveContainer.innerHTML = allRooms.map(r => `
         <button onclick="moverUtilizadorPara('${userId}', '${r}')" class="text-left text-[11px] text-gray-300 hover:bg-gray-800 px-2 py-0.5 rounded transition cursor-pointer">📁 ${r}</button>
       `).join('');
 
