@@ -325,6 +325,12 @@
             videoElem = document.getElementById(`video-${peerId}`);
           }
           videoElem.srcObject = stream;
+          
+          // Força o play para evitar a tela preta
+          videoElem.onloadedmetadata = () => {
+            videoElem.play().catch(e => console.log('Autoplay bloqueado:', e));
+          };
+
           verificarTelasAtivas();
 
           track.onended = () => {
@@ -418,7 +424,10 @@
           <video id="video-local" autoplay muted playsinline class="w-full h-full object-contain"></video>
         `;
         document.getElementById('video-grid').appendChild(container);
-        document.getElementById('video-local').srcObject = localScreenStream;
+        
+        const videoLocalElem = document.getElementById('video-local');
+        videoLocalElem.srcObject = localScreenStream;
+        videoLocalElem.muted = true; // Garante silêncio na própria pré-visualização
 
         const videoTrack = localScreenStream.getVideoTracks()[0];
         
