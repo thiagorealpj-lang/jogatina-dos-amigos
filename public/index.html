@@ -58,20 +58,34 @@
     </header>
 
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-hidden">
+      <!-- Grade de Vídeos / Telas Compartilhadas -->
       <div class="lg:col-span-3 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between overflow-y-auto">
-        <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1"></div>
-        <div class="flex justify-center gap-4 mt-4 pt-2 border-t border-gray-800/50">
-          <button id="btn-mic" onclick="toggleMic()" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-full transition">🎤</button>
-          <button onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">📺 Compartilhar Tela</button>
+        <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 items-center justify-center min-h-[300px]">
+          <div id="no-shares-msg" class="col-span-2 text-center text-gray-500 font-cyber text-sm">
+            Nenhum compartilhamento de tela ativo no momento.
+          </div>
+        </div>
+        
+        <!-- Painel de Controles -->
+        <div class="flex justify-center items-center gap-4 mt-4 pt-3 border-t border-gray-800/50">
+          <button id="btn-mic" onclick="toggleMic()" class="bg-emerald-600 hover:bg-emerald-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg">
+            🎤 Microfone: LIGADO
+          </button>
+          <button id="btn-screen" onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg">
+            📺 Compartilhar Tela
+          </button>
         </div>
       </div>
 
+      <!-- Barra Lateral (Usuários e Chat) -->
       <div class="flex flex-col gap-4">
-        <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-1/3 flex flex-col">
+        <!-- Lista de Usuários Online com Mute Individual -->
+        <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-2/5 flex flex-col">
           <h3 class="font-cyber text-xs text-gray-400 mb-2">ONLINE (<span id="user-count">0</span>)</h3>
           <div id="users-list" class="flex-1 overflow-y-auto space-y-1 text-sm"></div>
         </div>
 
+        <!-- Chat da Sala -->
         <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex-1 flex flex-col justify-between">
           <h3 class="font-cyber text-xs text-gray-400 mb-2">CHAT DA SALA</h3>
           <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-2 text-sm text-gray-300"></div>
@@ -84,24 +98,38 @@
     </div>
   </div>
 
+  <!-- Elemento oculto para guardar os áudios recebidos -->
+  <div id="audio-containers" class="hidden"></div>
+
   <script>
     let socket;
-    let localStream;
+    let localAudioStream = null;
+    let localScreenStream = null;
     let roomId, nick;
+    let peers = {}; // Guarda as conexões P2P com cada amigo
+    let mutedUsers = {}; // Guarda quem mutaste individualmente
+    let isMicMuted = false;
 
-    function entrarNaSala() {
+    const rtcConfig = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
+
+    async function entrarNaSala() {
       nick = document.getElementById('input-nick').value.trim();
       roomId = document.getElementById('input-room').value.trim();
 
       if (!nick || !roomId) return alert('Preencha o Nick e a Sala!');
 
-      // Força a conexão correta com o servidor no Render
-      socket = io({
-        transports: ['websocket', 'polling']
-      });
+      // Captura o microfone assim que entra
+      try {
+        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch (err) {
+        console.warn('Microfone não ativado ou sem permissão:', err);
+      }
+
+      socket = io({ transports: ['websocket', 'polling'] });
 
       socket.on('connect', () => {
-        console.log('Conectado ao servidor:', socket.id);
         socket.emit('join-room', { roomId, nick });
       });
 
@@ -109,13 +137,49 @@
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('display-room').innerText = roomId;
 
+      // Quando entra um novo usuário, inicia a conexão P2P WebRTC
+      socket.on('user-connected', ({ peerId, nick: peerNick }) => {
+        iniciarConexaoWebRTC(peerId, peerNick, true);
+      });
+
+      // Recebe ofertas, respostas e candidates do WebRTC
+      socket.on('signal', async ({ from, signal, type, nick: peerNick }) => {
+        if (!peers[from]) {
+          iniciarConexaoWebRTC(from, peerNick, false);
+        }
+
+        const peer = peers[from].pc;
+
+        if (type === 'offer') {
+          await peer.setRemoteDescription(new RTCSessionDescription(signal));
+          const answer = await peer.createAnswer();
+          await peer.setLocalDescription(answer);
+          socket.emit('signal', { to: from, signal: answer, type: 'answer', nick });
+        } else if (type === 'answer') {
+          await peer.setRemoteDescription(new RTCSessionDescription(signal));
+        } else if (type === 'candidate') {
+          try {
+            await peer.addIceCandidate(new RTCIceCandidate(signal));
+          } catch (e) { console.error('Erro ICE Candidate:', e); }
+        }
+      });
+
       socket.on('user-list', (users) => {
         document.getElementById('user-count').innerText = users.length;
-        document.getElementById('users-list').innerHTML = users.map(u => 
-          `<div class="flex items-center justify-between p-1 rounded bg-gray-800/40 text-xs">
-            <span class="text-cyan-300 font-medium">${u.nick}</span>
-          </div>`
-        ).join('');
+        document.getElementById('users-list').innerHTML = users.map(u => {
+          const isMe = u.id === socket.id;
+          const isMuted = mutedUsers[u.id];
+          return `
+            <div class="flex items-center justify-between p-1.5 rounded bg-gray-800/40 text-xs mb-1">
+              <span class="text-cyan-300 font-medium">${u.nick} ${isMe ? '(Você)' : ''}</span>
+              ${!isMe ? `
+                <button onclick="toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-0.5 rounded transition">
+                  ${isMuted ? '🔇 Mutado' : '🔊 Ouvindo'}
+                </button>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
       });
 
       socket.on('receive-chat', ({ nick, msg, time }) => {
@@ -123,6 +187,172 @@
         chatBox.innerHTML += `<div><span class="text-gray-500">[${time}]</span> <strong class="text-purple-400">${nick}:</strong> ${msg}</div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
       });
+
+      socket.on('user-disconnected', (peerId) => {
+        if (peers[peerId]) {
+          peers[peerId].pc.close();
+          delete peers[peerId];
+        }
+        const videoElem = document.getElementById(`video-${peerId}`);
+        if (videoElem) videoElem.remove();
+        const audioElem = document.getElementById(`audio-${peerId}`);
+        if (audioElem) audioElem.remove();
+        verificarTelasAtivas();
+      });
+    }
+
+    function iniciarConexaoWebRTC(peerId, peerNick, isInitiator) {
+      const pc = new RTCPeerConnection(rtcConfig);
+      peers[peerId] = { pc, nick: peerNick };
+
+      // Adiciona o microfone local à conexão
+      if (localAudioStream) {
+        localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream));
+      }
+
+      // Adiciona o compartilhamento de tela se já estiver ativo
+      if (localScreenStream) {
+        localScreenStream.getTracks().forEach(track => pc.addTrack(track, localScreenStream));
+      }
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('signal', { to: peerId, signal: event.candidate, type: 'candidate', nick });
+        }
+      };
+
+      pc.ontrack = (event) => {
+        const stream = event.streams[0];
+        const track = event.track;
+
+        if (track.kind === 'audio') {
+          // Cria o elemento de áudio para escutar o amigo
+          let audioElem = document.getElementById(`audio-${peerId}`);
+          if (!audioElem) {
+            audioElem = document.createElement('audio');
+            audioElem.id = `audio-${peerId}`;
+            audioElem.autoplay = true;
+            document.getElementById('audio-containers').appendChild(audioElem);
+          }
+          audioElem.srcObject = stream;
+        } else if (track.kind === 'video') {
+          // Exibe o vídeo/tela compartilhada na grade
+          let videoElem = document.getElementById(`video-${peerId}`);
+          if (!videoElem) {
+            const container = document.createElement('div');
+            container.id = `video-container-${peerId}`;
+            container.className = "relative w-full h-full min-h-[200px] bg-black rounded-xl overflow-hidden border border-purple-500/40 flex flex-col";
+            
+            container.innerHTML = `
+              <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded text-xs text-cyan-400 font-cyber z-10">
+                📺 Tela de: ${peerNick}
+              </div>
+              <video id="video-${peerId}" autoplay playsinline class="w-full h-full object-contain"></video>
+            `;
+            document.getElementById('video-grid').appendChild(container);
+            videoElem = document.getElementById(`video-${peerId}`);
+          }
+          videoElem.srcObject = stream;
+          verificarTelasAtivas();
+        }
+      };
+
+      if (isInitiator) {
+        pc.onnegotiationneeded = async () => {
+          try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit('signal', { to: peerId, signal: offer, type: 'offer', nick });
+          } catch (e) { console.error('Erro ao criar offer:', e); }
+        };
+      }
+    }
+
+    // Ligar / Desligar o próprio Microfone
+    function toggleMic() {
+      if (!localAudioStream) return alert('Nenhum microfone detetado!');
+      
+      isMicMuted = !isMicMuted;
+      localAudioStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted);
+
+      const btn = document.getElementById('btn-mic');
+      if (isMicMuted) {
+        btn.className = "bg-red-600 hover:bg-red-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg";
+        btn.innerText = "🎤 Microfone: MUTADO";
+      } else {
+        btn.className = "bg-emerald-600 hover:bg-emerald-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg";
+        btn.innerText = "🎤 Microfone: LIGADO";
+      }
+    }
+
+    // Mutar/Desmutar um amigo específico
+    function toggleMuteUser(peerId) {
+      const audioElem = document.getElementById(`audio-${peerId}`);
+      mutedUsers[peerId] = !mutedUsers[peerId];
+
+      if (audioElem) {
+        audioElem.muted = !!mutedUsers[peerId];
+      }
+
+      // Atualiza a lista visual
+      socket.emit('join-room', { roomId, nick });
+    }
+
+    // Compartilhamento de Tela
+    async function toggleScreenShare() {
+      if (localScreenStream) {
+        // Para o compartilhamento se já estiver ativo
+        localScreenStream.getTracks().forEach(track => track.stop());
+        localScreenStream = null;
+        const myVideo = document.getElementById('video-container-local');
+        if (myVideo) myVideo.remove();
+        document.getElementById('btn-screen').innerText = "📺 Compartilhar Tela";
+        verificarTelasAtivas();
+        return;
+      }
+
+      try {
+        localScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 }, audio: false });
+        
+        // Exibe uma visualização leve local
+        const container = document.createElement('div');
+        container.id = `video-container-local`;
+        container.className = "relative w-full h-full min-h-[200px] bg-black rounded-xl overflow-hidden border border-cyan-500/40 flex flex-col";
+        container.innerHTML = `
+          <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded text-xs text-cyan-400 font-cyber z-10">
+            📺 Sua Tela (Sendo Transmitida)
+          </div>
+          <video id="video-local" autoplay muted playsinline class="w-full h-full object-contain"></video>
+        `;
+        document.getElementById('video-grid').appendChild(container);
+        document.getElementById('video-local').srcObject = localScreenStream;
+
+        // Adiciona a track às conexões dos amigos
+        const videoTrack = localScreenStream.getVideoTracks()[0];
+        Object.values(peers).forEach(({ pc }) => {
+          pc.addTrack(videoTrack, localScreenStream);
+        });
+
+        document.getElementById('btn-screen').innerText = "🛑 Parar Partilha";
+
+        videoTrack.onended = () => {
+          toggleScreenShare();
+        };
+
+        verificarTelasAtivas();
+      } catch (err) {
+        console.warn('Partilha de tela cancelada:', err);
+      }
+    }
+
+    function verificarTelasAtivas() {
+      const videoGrid = document.getElementById('video-grid');
+      const noSharesMsg = document.getElementById('no-shares-msg');
+      const hasVideos = videoGrid.querySelectorAll('video').length > 0;
+
+      if (noSharesMsg) {
+        noSharesMsg.style.display = hasVideos ? 'none' : 'block';
+      }
     }
 
     function enviarMsg() {
@@ -133,29 +363,10 @@
       }
     }
 
-    async function toggleScreenShare() {
-      try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 } });
-        const videoElem = document.createElement('video');
-        videoElem.srcObject = screenStream;
-        videoElem.autoplay = true;
-        videoElem.className = "w-full h-full object-cover rounded-xl border border-indigo-500/50 neon-glow";
-        document.getElementById('video-grid').appendChild(videoElem);
-      } catch (err) { console.error(err); }
-    }
-
     function copiarLink() {
       navigator.clipboard.writeText(window.location.origin + '?room=' + roomId);
       document.getElementById('btn-copy-text').innerText = 'Copiado!';
       setTimeout(() => document.getElementById('btn-copy-text').innerText = 'Copiar ID/Link', 2000);
-    }
-
-    function toggleMic() {
-      if (localStream) {
-        const audioTrack = localStream.getAudioTracks()[0];
-        audioTrack.enabled = !audioTrack.enabled;
-        document.getElementById('btn-mic').classList.toggle('bg-red-600', !audioTrack.enabled);
-      }
     }
 
     function sairDaSala() { location.reload(); }
