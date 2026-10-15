@@ -23,6 +23,9 @@ io.on('connection', (socket) => {
     if (!rooms[roomId]) rooms[roomId] = [];
 
     const isAdminDefault = nick.toLowerCase() === 'c0kz';
+    
+    // Remove duplicados se houver re-conexão rápida
+    rooms[roomId] = rooms[roomId].filter(u => u.id !== socket.id);
     rooms[roomId].push({ id: socket.id, nick, isAdmin: isAdminDefault });
 
     io.to(roomId).emit('user-list', rooms[roomId]);
@@ -48,15 +51,15 @@ io.on('connection', (socket) => {
       }
     });
 
-    // --- OUVINTES DE KICK E BAN (ESTAVAM EM FALTA NO SERVIDOR) ---
+    // SISTEMA DE KICK E BAN DIRETO
     socket.on('kick-user', ({ targetId }) => {
-      io.to(roomId).emit('force-kick', { targetId });
+      // Envia o aviso diretamente para o socket ID do alvo
+      io.to(targetId).emit('kicked');
     });
 
     socket.on('ban-user', ({ targetId }) => {
-      io.to(roomId).emit('force-ban', { targetId });
+      io.to(targetId).emit('banned', { targetNick: rooms[roomId]?.find(u => u.id === targetId)?.nick });
     });
-    // -------------------------------------------------------------
 
     socket.on('disconnect', () => {
       if (rooms[roomId]) {
