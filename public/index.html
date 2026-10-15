@@ -19,6 +19,16 @@
     }
     .live-badge { animation: pulse-live 1.5s infinite; }
     .speaking-glow { border: 2px solid #10b981 !important; box-shadow: 0 0 10px #10b981; }
+    
+    /* Grade flexível com ordenação para manter a expandida sempre no topo */
+    #video-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
+    }
+
     .video-box {
       width: 280px !important;
       height: 280px !important;
@@ -26,12 +36,15 @@
       max-height: 280px;
       transition: all 0.3s ease;
       flex-shrink: 0;
+      order: 2; /* Posição padrão (baixo) */
     }
+
     .video-box.expanded {
       width: 100% !important;
       height: 480px !important;
       max-width: 100% !important;
       max-height: 480px !important;
+      order: 1; /* Força a ir para o topo absoluto */
     }
   </style>
 </head>
@@ -64,9 +77,10 @@
   <!-- App Principal -->
   <div id="app-screen" class="hidden flex-1 flex flex-col h-screen p-4 gap-4 max-w-7xl mx-auto w-full">
     <header class="bg-gray-900/80 border border-purple-900/40 p-4 rounded-xl flex justify-between items-center backdrop-blur-md">
-      <div>
+      <div class="flex items-baseline gap-3">
         <h2 class="font-cyber font-bold text-cyan-400 text-lg">JOGATINA DOS AMIGOS</h2>
-        <span class="text-xs text-gray-400">Sala: <strong id="display-room" class="text-purple-400">---</strong></span>
+        <span class="text-xs font-cyber text-purple-400 tracking-wider">BY C0KZ</span>
+        <span class="text-xs text-gray-400 ml-2">Sala: <strong id="display-room" class="text-purple-400">---</strong></span>
       </div>
       <div class="flex gap-2">
         <button id="btn-copy-link" onclick="copiarLink()" class="bg-purple-950 border border-purple-500/50 hover:bg-purple-900 font-cyber text-xs px-3 py-2 rounded-lg transition cursor-pointer">
@@ -81,8 +95,8 @@
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-hidden">
       <!-- Grade de Vídeos / Telas Compartilhadas -->
       <div class="lg:col-span-3 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between overflow-y-auto">
-        <div id="video-grid" class="flex flex-wrap gap-4 flex-1 items-center justify-center min-h-[300px] content-center">
-          <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-sm">
+        <div id="video-grid" class="flex-1 content-start">
+          <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-sm my-auto">
             Nenhum compartilhamento de tela ativo no momento.
           </div>
         </div>
@@ -295,7 +309,7 @@
       peers[peerId] = { pc, nick: peerNick };
 
       pc.addTransceiver('audio', { direction: 'sendrecv' });
-      const videoTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
+      pc.addTransceiver('video', { direction: 'sendrecv' });
 
       if (localAudioStream) {
         localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream));
@@ -477,7 +491,6 @@
       }
 
       try {
-        // Otimização para 60 FPS e alta nitidez (Full HD / 60fps)
         localScreenStream = await navigator.mediaDevices.getDisplayMedia({
           video: {
             frameRate: { ideal: 60, max: 60 },
@@ -514,12 +527,11 @@
         
         for (const [peerId, { pc }] of Object.entries(peers)) {
           const sender = pc.addTrack(videoTrack, localScreenStream);
-          // Otimização de parâmetros de codificação para priorizar nitidez e 60fps
           const parameters = sender.getParameters();
           if (!parameters.encodings) {
             parameters.encodings = [{}];
           }
-          parameters.encodings[0].maxBitrate = 4000000; // 4 Mbps para alta qualidade
+          parameters.encodings[0].maxBitrate = 4000000;
           parameters.encodings[0].maxFramerate = 60;
           try {
             await sender.setParameters(parameters);
