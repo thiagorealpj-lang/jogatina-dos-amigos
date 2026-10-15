@@ -41,7 +41,7 @@ io.on('connection', (socket) => {
       io.to(to).emit('signal', { from: socket.id, signal, type, nick });
     });
 
-    // --- COMANDOS DE MODERAÇÃO ---
+    // --- COMANDOS DE MODERAÇÃO CORRIGIDOS ---
     socket.on('make-admin', ({ targetId }) => {
       const user = rooms[roomId]?.find(u => u.id === targetId);
       if (user) {
@@ -51,13 +51,27 @@ io.on('connection', (socket) => {
     });
 
     socket.on('kick-user', ({ targetId }) => {
+      // Avisa o cliente específico para ser kickado
       io.to(targetId).emit('kicked');
+      
+      // Força o socket do alvo a sair da sala no servidor
+      const targetSocket = io.sockets.sockets.get(targetId);
+      if (targetSocket) {
+        targetSocket.leave(roomId);
+      }
     });
 
     socket.on('ban-user', ({ targetId }) => {
+      // Avisa o cliente específico para ser banido
       io.to(targetId).emit('banned');
+      
+      // Força o socket do alvo a sair da sala no servidor
+      const targetSocket = io.sockets.sockets.get(targetId);
+      if (targetSocket) {
+        targetSocket.leave(roomId);
+      }
     });
-    // ----------------------------
+    // ----------------------------------------
 
     socket.on('disconnect', () => {
       if (rooms[roomId]) {
