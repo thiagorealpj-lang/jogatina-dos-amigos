@@ -51,7 +51,7 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-gray-950 via-purple-950/20 to-black">
+<body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-gray-950 via-purple-950/20 to-black" onclick="desbloquearAudioGlobal()">
 
   <!-- Tela de Login -->
   <div id="login-screen" class="flex-1 flex items-center justify-center p-4">
@@ -96,7 +96,7 @@
     </header>
 
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-hidden pb-2">
-      <!-- Grade de Vídeos / Telas Compartilhadas (Ocupa 4 colunas para mais espaço) -->
+      <!-- Grade de Vídeos / Telas Compartilhadas -->
       <div class="lg:col-span-4 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between overflow-y-auto">
         <div id="video-grid" class="flex-1 content-start py-2">
           <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-sm my-auto">
@@ -120,15 +120,13 @@
         </div>
       </div>
 
-      <!-- Barra Lateral Unificada (Online em cima + Chat embaixo) -->
+      <!-- Barra Lateral Unificada -->
       <div class="lg:col-span-1 flex flex-col gap-4 overflow-hidden">
-        <!-- Secção Online -->
         <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-2/5 flex flex-col">
           <h3 class="font-cyber text-xs text-gray-400 mb-2">ONLINE (<span id="user-count">0</span>)</h3>
           <div id="users-list" class="flex-1 overflow-y-auto space-y-2 text-sm pr-1"></div>
         </div>
 
-        <!-- Secção Chat -->
         <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-3/5 flex flex-col justify-between">
           <h3 class="font-cyber text-xs text-gray-400 mb-2">CHAT DA SALA</h3>
           <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-2 text-sm text-gray-300 pr-1"></div>
@@ -141,7 +139,7 @@
     </div>
   </div>
 
-  <div id="audio-containers" class="hidden"></div>
+  <div id="audio-containers"></div>
 
   <script>
     let socket;
@@ -160,7 +158,13 @@
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
-    function entrarNaSala() {
+    function desbloquearAudioGlobal() {
+      document.querySelectorAll('#audio-containers audio').forEach(audio => {
+        audio.play().catch(e => {});
+      });
+    }
+
+    async function entrarNaSala() {
       nick = document.getElementById('input-nick').value.trim();
       roomId = document.getElementById('input-room').value.trim();
 
@@ -170,20 +174,18 @@
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('display-room').innerText = roomId;
 
+      try {
+        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        monitorarVozLocal(localAudioStream);
+      } catch (err) {
+        console.warn('Microfone não ativado:', err);
+      }
+
       socket = io({ transports: ['websocket', 'polling'] });
 
       socket.on('connect', () => {
         socket.emit('join-room', { roomId, nick });
       });
-
-      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-        .then(stream => {
-          localAudioStream = stream;
-          monitorarVozLocal(localAudioStream);
-        })
-        .catch(err => {
-          console.warn('Microfone não ativado ou negado:', err);
-        });
 
       socket.on('user-connected', ({ peerId, nick: peerNick }) => {
         criarConexao(peerId, peerNick, true);
@@ -363,6 +365,7 @@
             audioElem = document.createElement('audio');
             audioElem.id = `audio-${peerId}`;
             audioElem.autoplay = true;
+            audioElem.controls = false;
             document.getElementById('audio-containers').appendChild(audioElem);
           }
           audioElem.srcObject = stream;
@@ -371,8 +374,9 @@
           const savedVol = userVolumes[peerId] !== undefined ? userVolumes[peerId] : 100;
           audioElem.volume = savedVol / 100;
 
-          // Força play garantido para o áudio reproduzir
-          audioElem.play().catch(e => console.log('Áudio autoplay:', e));
+          audioElem.play().catch(e => {
+            console.log('Autoplay bloqueado pelo navegador. Clique na tela para liberar.');
+          });
 
           monitorarVozRemota(stream, peerId);
         } else if (track.kind === 'video') {
