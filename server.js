@@ -48,7 +48,7 @@ io.on('connection', (socket) => {
       }
     });
 
-    // SISTEMA DE KICK E BAN GLOBAL PARA A SALA
+    // --- OUVINTES DE KICK E BAN (ESTAVAM EM FALTA NO SERVIDOR) ---
     socket.on('kick-user', ({ targetId }) => {
       io.to(roomId).emit('force-kick', { targetId });
     });
@@ -56,6 +56,7 @@ io.on('connection', (socket) => {
     socket.on('ban-user', ({ targetId }) => {
       io.to(roomId).emit('force-ban', { targetId });
     });
+    // -------------------------------------------------------------
 
     socket.on('disconnect', () => {
       if (rooms[roomId]) {
