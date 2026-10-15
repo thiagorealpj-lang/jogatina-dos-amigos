@@ -15,13 +15,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Armazena as salas e os objetos completos dos utilizadores em cada uma
 const rooms = {
   "Geral": []
 };
 
 function broadcastRoomsState() {
-  // Envia um resumo de quem está em cada sala para todos os clientes
   const roomsSummary = {};
   for (const [roomName, users] of Object.entries(rooms)) {
     roomsSummary[roomName] = users.map(u => ({ id: u.id, nick: u.nick, isAdmin: u.isAdmin }));
