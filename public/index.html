@@ -33,7 +33,7 @@
           <label class="block text-xs font-cyber text-gray-400 mb-1">CÓDIGO DA SALA</label>
           <input id="input-room" type="text" placeholder="Ex: sala-dos-crias" class="w-full bg-gray-950 border border-purple-900/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition">
         </div>
-        <button onclick="entrarNaSala()" class="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-cyber font-bold py-3 rounded-lg transition transform active:scale-95 shadow-lg">
+        <button onclick="entrarNaSala()" class="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-cyber font-bold py-3 rounded-lg transition transform active:scale-95 shadow-lg cursor-pointer">
           ENTRAR NA SALA
         </button>
       </div>
@@ -112,30 +112,32 @@
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
-    async function entrarNaSala() {
+    function entrarNaSala() {
       nick = document.getElementById('input-nick').value.trim();
       roomId = document.getElementById('input-room').value.trim();
 
       if (!nick || !roomId) return alert('Preencha o Nick e a Sala!');
 
-      try {
-        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      } catch (err) {
-        console.warn('Microfone não ativado:', err);
-      }
-
-      // Inicializa a interface imediatamente
+      // 1. Muda a tela imediatamente para não congelar
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app-screen').classList.remove('hidden');
       document.getElementById('display-room').innerText = roomId;
 
-      // Conecta ao Socket.io
+      // 2. Conecta ao Socket.io
       socket = io({ transports: ['websocket', 'polling'] });
 
       socket.on('connect', () => {
-        console.log('Conectado ao servidor, entrando na sala...');
         socket.emit('join-room', { roomId, nick });
       });
+
+      // 3. Pede o microfone em segundo plano sem bloquear a UI
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(stream => {
+          localAudioStream = stream;
+        })
+        .catch(err => {
+          console.warn('Microfone não ativado ou negado:', err);
+        });
 
       socket.on('user-connected', ({ peerId, nick: peerNick }) => {
         iniciarConexaoWebRTC(peerId, peerNick, true);
@@ -179,4 +181,184 @@
           delete peers[peerId];
         }
         const videoElem = document.getElementById(`video-${peerId}`);
-        if (videoElem
+        if (videoElem) videoElem.remove();
+        const audioElem = document.getElementById(`audio-${peerId}`);
+        if (audioElem) audioElem.remove();
+        verificarTelasAtivas();
+      });
+    }
+
+    function renderizarListaUsuarios() {
+      document.getElementById('user-count').innerText = currentUsersList.length;
+      document.getElementById('users-list').innerHTML = currentUsersList.map(u => {
+        const isMe = u.id === socket.id;
+        const isMuted = mutedUsers[u.id];
+        return `
+          <div class="flex items-center justify-between p-1.5 rounded bg-gray-800/40 text-xs mb-1">
+            <span class="text-cyan-300 font-medium">${u.nick} ${isMe ? '(Você)' : ''}</span>
+            ${!isMe ? `
+              <button onclick="toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-0.5 rounded transition">
+                ${isMuted ? '🔇 Mutado' : '🔊 Ouvindo'}
+              </button>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function iniciarConexaoWebRTC(peerId, peerNick, isInitiator) {
+      const pc = new RTCPeerConnection(rtcConfig);
+      peers[peerId] = { pc, nick: peerNick };
+
+      if (localAudioStream) {
+        localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream));
+      }
+
+      if (localScreenStream) {
+        localScreenStream.getTracks().forEach(track => pc.addTrack(track, localScreenStream));
+      }
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('signal', { to: peerId, signal: event.candidate, type: 'candidate', nick });
+        }
+      };
+
+      pc.ontrack = (event) => {
+        const stream = event.streams[0];
+        const track = event.track;
+
+        if (track.kind === 'audio') {
+          let audioElem = document.getElementById(`audio-${peerId}`);
+          if (!audioElem) {
+            audioElem = document.createElement('audio');
+            audioElem.id = `audio-${peerId}`;
+            audioElem.autoplay = true;
+            document.getElementById('audio-containers').appendChild(audioElem);
+          }
+          audioElem.srcObject = stream;
+          audioElem.muted = !!mutedUsers[peerId];
+        } else if (track.kind === 'video') {
+          let videoElem = document.getElementById(`video-${peerId}`);
+          if (!videoElem) {
+            const container = document.createElement('div');
+            container.id = `video-container-${peerId}`;
+            container.className = "relative w-full h-full min-h-[200px] bg-black rounded-xl overflow-hidden border border-purple-500/40 flex flex-col";
+            
+            container.innerHTML = `
+              <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded text-xs text-cyan-400 font-cyber z-10">
+                📺 Tela de: ${peerNick}
+              </div>
+              <video id="video-${peerId}" autoplay playsinline class="w-full h-full object-contain"></video>
+            `;
+            document.getElementById('video-grid').appendChild(container);
+            videoElem = document.getElementById(`video-${peerId}`);
+          }
+          videoElem.srcObject = stream;
+          verificarTelasAtivas();
+        }
+      };
+
+      if (isInitiator) {
+        pc.onnegotiationneeded = async () => {
+          try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit('signal', { to: peerId, signal: offer, type: 'offer', nick });
+          } catch (e) {}
+        };
+      }
+    }
+
+    function toggleMic() {
+      if (!localAudioStream) return alert('Microfone ainda não ativo ou negado.');
+      isMicMuted = !isMicMuted;
+      localAudioStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted);
+
+      const btn = document.getElementById('btn-mic');
+      if (isMicMuted) {
+        btn.className = "bg-red-600 hover:bg-red-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg";
+        btn.innerText = "🎤 Microfone: MUTADO";
+      } else {
+        btn.className = "bg-emerald-600 hover:bg-emerald-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg";
+        btn.innerText = "🎤 Microfone: LIGADO";
+      }
+    }
+
+    function toggleMuteUser(peerId) {
+      mutedUsers[peerId] = !mutedUsers[peerId];
+      const audioElem = document.getElementById(`audio-${peerId}`);
+      if (audioElem) {
+        audioElem.muted = mutedUsers[peerId];
+      }
+      renderizarListaUsuarios();
+    }
+
+    async function toggleScreenShare() {
+      if (localScreenStream) {
+        localScreenStream.getTracks().forEach(track => track.stop());
+        localScreenStream = null;
+        const myVideo = document.getElementById('video-container-local');
+        if (myVideo) myVideo.remove();
+        document.getElementById('btn-screen').innerText = "📺 Compartilhar Tela";
+        verificarTelasAtivas();
+        return;
+      }
+
+      try {
+        localScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 }, audio: false });
+        
+        const container = document.createElement('div');
+        container.id = `video-container-local`;
+        container.className = "relative w-full h-full min-h-[200px] bg-black rounded-xl overflow-hidden border border-cyan-500/40 flex flex-col";
+        container.innerHTML = `
+          <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded text-xs text-cyan-400 font-cyber z-10">
+            📺 Sua Tela (Sendo Transmitida)
+          </div>
+          <video id="video-local" autoplay muted playsinline class="w-full h-full object-contain"></video>
+        `;
+        document.getElementById('video-grid').appendChild(container);
+        document.getElementById('video-local').srcObject = localScreenStream;
+
+        const videoTrack = localScreenStream.getVideoTracks()[0];
+        Object.values(peers).forEach(({ pc }) => {
+          pc.addTrack(videoTrack, localScreenStream);
+        });
+
+        document.getElementById('btn-screen').innerText = "🛑 Parar Partilha";
+
+        videoTrack.onended = () => {
+          toggleScreenShare();
+        };
+
+        verificarTelasAtivas();
+      } catch (err) {}
+    }
+
+    function verificarTelasAtivas() {
+      const videoGrid = document.getElementById('video-grid');
+      const noSharesMsg = document.getElementById('no-shares-msg');
+      const hasVideos = videoGrid.querySelectorAll('video').length > 0;
+      if (noSharesMsg) {
+        noSharesMsg.style.display = hasVideos ? 'none' : 'block';
+      }
+    }
+
+    function enviarMsg() {
+      const input = document.getElementById('chat-input');
+      if (input.value.trim()) {
+        socket.emit('send-chat', input.value.trim());
+        input.value = '';
+      }
+    }
+
+    function copiarLink() {
+      navigator.clipboard.writeText(window.location.origin + '?room=' + roomId);
+      document.getElementById('btn-copy-text').innerText = 'Copiado!';
+      setTimeout(() => document.getElementById('btn-copy-text').innerText = 'Copiar ID/Link', 2000);
+    }
+
+    function sairDaSala() { location.reload(); }
+  </script>
+</body>
+</html>
