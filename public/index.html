@@ -20,7 +20,6 @@
     .live-badge { animation: pulse-live 1.5s infinite; }
     .speaking-glow { border: 2px solid #10b981 !important; box-shadow: 0 0 10px #10b981; }
     
-    /* Grade flexível com ordenação para manter a expandida sempre no topo */
     #video-grid {
       display: flex;
       flex-wrap: wrap;
@@ -36,7 +35,7 @@
       max-height: 280px;
       transition: all 0.3s ease;
       flex-shrink: 0;
-      order: 2; /* Posição padrão (baixo) */
+      order: 2;
     }
 
     .video-box.expanded {
@@ -44,7 +43,12 @@
       height: 480px !important;
       max-width: 100% !important;
       max-height: 480px !important;
-      order: 1; /* Força a ir para o topo absoluto */
+      order: 1;
+    }
+
+    /* Estilo customizado para o slider de volume */
+    input[type=range] {
+      accent-color: #a855f7;
     }
   </style>
 </head>
@@ -121,7 +125,7 @@
       <div class="flex flex-col gap-4">
         <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-2/5 flex flex-col">
           <h3 class="font-cyber text-xs text-gray-400 mb-2">ONLINE (<span id="user-count">0</span>)</h3>
-          <div id="users-list" class="flex-1 overflow-y-auto space-y-1.5 text-sm"></div>
+          <div id="users-list" class="flex-1 overflow-y-auto space-y-2 text-sm"></div>
         </div>
 
         <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex-1 flex flex-col justify-between">
@@ -145,6 +149,7 @@
     let roomId, nick;
     let peers = {};
     let mutedUsers = {};
+    let userVolumes = {}; // Guarda o volume de cada utilizador (padrão 1.0)
     let sharingUsers = {};
     let isMicMuted = false;
     let isMasterMuted = false;
@@ -221,6 +226,7 @@
           delete peers[peerId];
         }
         delete sharingUsers[peerId];
+        delete userVolumes[peerId];
         const videoElem = document.getElementById(`video-container-${peerId}`);
         if (videoElem) videoElem.remove();
         const audioElem = document.getElementById(`audio-${peerId}`);
@@ -288,20 +294,41 @@
         const isMe = u.id === socket.id;
         const isMuted = mutedUsers[u.id];
         const isSharing = sharingUsers[u.id];
+        const currentVol = userVolumes[u.id] !== undefined ? userVolumes[u.id] : 100;
+
         return `
-          <div id="user-card-${u.id}" class="flex items-center justify-between p-2 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs transition-all">
-            <div class="flex items-center gap-2 overflow-hidden">
-              <span class="text-cyan-300 font-bold truncate">${u.nick} ${isMe ? '(Você)' : ''}</span>
-              ${isSharing ? '<span class="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded font-cyber live-badge font-bold">🔴 LIVE</span>' : ''}
+          <div id="user-card-${u.id}" class="flex flex-col p-2 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs transition-all gap-1.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <span class="text-cyan-300 font-bold truncate">${u.nick} ${isMe ? '(Você)' : ''}</span>
+                ${isSharing ? '<span class="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded font-cyber live-badge font-bold">🔴 LIVE</span>' : ''}
+              </div>
+              ${!isMe ? `
+                <button onclick="toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-1 rounded transition shrink-0 cursor-pointer">
+                  ${isMuted ? '🔇 Mutado' : '🔊 Ouvindo'}
+                </button>
+              ` : ''}
             </div>
             ${!isMe ? `
-              <button onclick="toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-1 rounded transition shrink-0 cursor-pointer">
-                ${isMuted ? '🔇 Mutado' : '🔊 Ouvindo'}
-              </button>
+              <div class="flex items-center gap-2 pt-1 border-t border-gray-700/40">
+                <span class="text-[10px] text-gray-400">Vol: <span id="vol-text-${u.id}">${currentVol}%</span></span>
+                <input type="range" min="0" max="200" value="${currentVol}" oninput="alterarVolumeUser('${u.id}', this.value)" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+              </div>
             ` : ''}
           </div>
         `;
       }).join('');
+    }
+
+    function alterarVolumeUser(peerId, valor) {
+      userVolumes[peerId] = valor;
+      const volText = document.getElementById(`vol-text-${peerId}`);
+      if (volText) volText.innerText = `${valor}%`;
+
+      const audioElem = document.getElementById(`audio-${peerId}`);
+      if (audioElem) {
+        audioElem.volume = valor / 100;
+      }
     }
 
     function criarConexao(peerId, peerNick, isInitiator) {
@@ -339,6 +366,11 @@
           }
           audioElem.srcObject = stream;
           audioElem.muted = isMasterMuted || !!mutedUsers[peerId];
+          
+          // Aplica o volume guardado (se houver)
+          const savedVol = userVolumes[peerId] !== undefined ? userVolumes[peerId] : 100;
+          audioElem.volume = savedVol / 100;
+
           monitorarVozRemota(stream, peerId);
         } else if (track.kind === 'video') {
           sharingUsers[peerId] = true;
