@@ -19,6 +19,21 @@
     }
     .live-badge { animation: pulse-live 1.5s infinite; }
     .speaking-glow { border: 2px solid #10b981 !important; box-shadow: 0 0 10px #10b981; }
+    /* Tela de partilha quadrada e compacta por defeito */
+    .video-box {
+      width: 280px !important;
+      height: 280px !important;
+      max-width: 280px;
+      max-height: 280px;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+    }
+    .video-box.expanded {
+      width: 100% !important;
+      height: 480px !important;
+      max-width: 100% !important;
+      max-height: 480px !important;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-gray-950 via-purple-950/20 to-black">
@@ -55,10 +70,10 @@
         <span class="text-xs text-gray-400">Sala: <strong id="display-room" class="text-purple-400">---</strong></span>
       </div>
       <div class="flex gap-2">
-        <button id="btn-copy-link" onclick="copiarLink()" class="bg-purple-950 border border-purple-500/50 hover:bg-purple-900 font-cyber text-xs px-3 py-2 rounded-lg transition">
+        <button id="btn-copy-link" onclick="copiarLink()" class="bg-purple-950 border border-purple-500/50 hover:bg-purple-900 font-cyber text-xs px-3 py-2 rounded-lg transition cursor-pointer">
           <span id="btn-copy-text">Copiar ID/Link</span>
         </button>
-        <button onclick="sairDaSala()" class="bg-red-950 border border-red-500/50 hover:bg-red-900 font-cyber text-xs px-3 py-2 rounded-lg transition text-red-300">
+        <button onclick="sairDaSala()" class="bg-red-950 border border-red-500/50 hover:bg-red-900 font-cyber text-xs px-3 py-2 rounded-lg transition text-red-300 cursor-pointer">
           Sair
         </button>
       </div>
@@ -67,18 +82,25 @@
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-hidden">
       <!-- Grade de Vídeos / Telas Compartilhadas -->
       <div class="lg:col-span-3 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between overflow-y-auto">
-        <div id="video-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 items-center justify-center min-h-[300px]">
-          <div id="no-shares-msg" class="col-span-2 text-center text-gray-500 font-cyber text-sm">
+        <div id="video-grid" class="flex flex-wrap gap-4 flex-1 items-center justify-center min-h-[300px] content-center">
+          <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-sm">
             Nenhum compartilhamento de tela ativo no momento.
           </div>
         </div>
         
         <!-- Painel de Controles -->
-        <div class="flex justify-center items-center gap-4 mt-4 pt-3 border-t border-gray-800/50">
-          <button id="btn-mic" onclick="toggleMic()" class="bg-emerald-600 hover:bg-emerald-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg">
-            🎤 Microfone: LIGADO
+        <div class="flex justify-center items-center gap-3 mt-4 pt-3 border-t border-gray-800/50">
+          <!-- Botão Microfone (Apenas Ícone) -->
+          <button id="btn-mic" onclick="toggleMic()" title="Mutar/Desmutar Microfone" class="bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
+            🎤
           </button>
-          <button id="btn-screen" onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg">
+          
+          <!-- Botão Master Mute (Microfone + Fone / Silenciar tudo) -->
+          <button id="btn-master-mute" onclick="toggleMasterMute()" title="Mutar Microfone e Áudio Geral do Servidor" class="bg-gray-700 hover:bg-gray-600 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
+            🎧
+          </button>
+
+          <button id="btn-screen" onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-xs px-5 py-3.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg cursor-pointer">
             📺 Compartilhar Tela
           </button>
         </div>
@@ -96,7 +118,7 @@
           <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-2 text-sm text-gray-300"></div>
           <div class="flex gap-2">
             <input id="chat-input" type="text" placeholder="Mensagem..." class="flex-1 bg-gray-950 border border-purple-900/40 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500" onkeydown="if(event.key==='Enter') enviarMsg()">
-            <button onclick="enviarMsg()" class="bg-cyan-600 hover:bg-cyan-500 font-cyber text-xs px-3 rounded-lg font-bold transition">Enviar</button>
+            <button onclick="enviarMsg()" class="bg-cyan-600 hover:bg-cyan-500 font-cyber text-xs px-3 rounded-lg font-bold transition cursor-pointer">Enviar</button>
           </div>
         </div>
       </div>
@@ -114,24 +136,18 @@
     let mutedUsers = {};
     let sharingUsers = {};
     let isMicMuted = false;
+    let isMasterMuted = false;
     let currentUsersList = [];
 
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
-    async function entrarNaSala() {
+    function entrarNaSala() {
       nick = document.getElementById('input-nick').value.trim();
       roomId = document.getElementById('input-room').value.trim();
 
       if (!nick || !roomId) return alert('Preencha o Nick e a Sala!');
-
-      try {
-        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        monitorarVozLocal(localAudioStream);
-      } catch (err) {
-        console.warn('Microfone não ativado:', err);
-      }
 
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('app-screen').classList.remove('hidden');
@@ -142,6 +158,15 @@
       socket.on('connect', () => {
         socket.emit('join-room', { roomId, nick });
       });
+
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(stream => {
+          localAudioStream = stream;
+          monitorarVozLocal(localAudioStream);
+        })
+        .catch(err => {
+          console.warn('Microfone não ativado ou negado:', err);
+        });
 
       socket.on('user-connected', ({ peerId, nick: peerNick }) => {
         criarConexao(peerId, peerNick, true);
@@ -204,7 +229,7 @@
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
         setInterval(() => {
-          if (isMicMuted) return;
+          if (isMicMuted || isMasterMuted) return;
           analyser.getByteFrequencyData(dataArray);
           let sum = dataArray.reduce((a, b) => a + b, 0);
           let average = sum / dataArray.length;
@@ -230,7 +255,7 @@
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
         setInterval(() => {
-          if (mutedUsers[peerId]) return;
+          if (mutedUsers[peerId] || isMasterMuted) return;
           analyser.getByteFrequencyData(dataArray);
           let sum = dataArray.reduce((a, b) => a + b, 0);
           let average = sum / dataArray.length;
@@ -259,7 +284,7 @@
               ${isSharing ? '<span class="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded font-cyber live-badge font-bold">🔴 LIVE</span>' : ''}
             </div>
             ${!isMe ? `
-              <button onclick="toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-1 rounded transition shrink-0">
+              <button onclick="toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-1 rounded transition shrink-0 cursor-pointer">
                 ${isMuted ? '🔇 Mutado' : '🔊 Ouvindo'}
               </button>
             ` : ''}
@@ -290,10 +315,10 @@
       };
 
       pc.ontrack = (event) => {
-        const stream = event.streams[0];
         const track = event.track;
 
         if (track.kind === 'audio') {
+          const stream = event.streams[0] || new MediaStream([track]);
           let audioElem = document.getElementById(`audio-${peerId}`);
           if (!audioElem) {
             audioElem = document.createElement('audio');
@@ -302,40 +327,44 @@
             document.getElementById('audio-containers').appendChild(audioElem);
           }
           audioElem.srcObject = stream;
-          audioElem.muted = !!mutedUsers[peerId];
+          audioElem.muted = isMasterMuted || !!mutedUsers[peerId];
           monitorarVozRemota(stream, peerId);
         } else if (track.kind === 'video') {
           sharingUsers[peerId] = true;
           renderizarListaUsuarios();
 
-          let videoElem = document.getElementById(`video-${peerId}`);
-          if (!videoElem) {
-            const container = document.createElement('div');
+          let container = document.getElementById(`video-container-${peerId}`);
+          if (!container) {
+            container = document.createElement('div');
             container.id = `video-container-${peerId}`;
-            container.className = "relative w-full h-full min-h-[220px] bg-black rounded-xl overflow-hidden border border-purple-500/40 flex flex-col shadow-lg";
+            container.className = "video-box relative bg-black rounded-xl overflow-hidden border border-purple-500/40 flex flex-col shadow-lg";
             
             container.innerHTML = `
-              <div class="absolute top-2 left-2 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-xs text-cyan-400 font-cyber z-10 flex items-center gap-2">
-                <span class="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded live-badge font-bold">LIVE</span>
-                📺 Tela de: ${peerNick}
+              <div class="absolute top-2 left-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-cyan-400 font-cyber z-10 flex items-center gap-1.5">
+                <span class="bg-red-600 text-white text-[8px] px-1 py-0.2 rounded live-badge font-bold">LIVE</span>
+                ${peerNick}
               </div>
-              <video id="video-${peerId}" autoplay playsinline class="w-full h-full object-contain"></video>
+              <div class="absolute top-2 right-2 flex gap-1 z-10">
+                <button onclick="toggleExpandVideo('${peerId}')" title="Expandir/Reduzir" class="bg-black/70 hover:bg-black text-white text-xs px-2 py-0.5 rounded border border-purple-500/50 cursor-pointer">🔲</button>
+                <button onclick="toggleFullScreenVideo('${peerId}')" title="Ecrã Completo" class="bg-black/70 hover:bg-black text-white text-xs px-2 py-0.5 rounded border border-purple-500/50 cursor-pointer">⛶</button>
+              </div>
+              <video id="video-${peerId}" autoplay playsinline class="w-full h-full object-contain cursor-pointer" onclick="toggleFullScreenVideo('${peerId}')"></video>
             `;
             document.getElementById('video-grid').appendChild(container);
-            videoElem = document.getElementById(`video-${peerId}`);
           }
-          videoElem.srcObject = stream;
+
+          const videoElem = document.getElementById(`video-${peerId}`);
+          const videoStream = new MediaStream([track]);
+          videoElem.srcObject = videoStream;
           
-          // Força o play para evitar a tela preta
           videoElem.onloadedmetadata = () => {
-            videoElem.play().catch(e => console.log('Autoplay bloqueado:', e));
+            videoElem.play().catch(e => console.log('Autoplay erro:', e));
           };
 
           verificarTelasAtivas();
 
           track.onended = () => {
             delete sharingUsers[peerId];
-            const container = document.getElementById(`video-container-${peerId}`);
             if (container) container.remove();
             verificarTelasAtivas();
             renderizarListaUsuarios();
@@ -357,17 +386,60 @@
     function toggleMic() {
       if (!localAudioStream) return alert('Microfone não detetado.');
       isMicMuted = !isMicMuted;
-      localAudioStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted);
+      localAudioStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted && !isMasterMuted);
 
       const btn = document.getElementById('btn-mic');
       const userCard = document.getElementById(`user-card-${socket.id}`);
       if (isMicMuted) {
-        btn.className = "bg-red-600 hover:bg-red-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg";
-        btn.innerText = "🎤 Microfone: MUTADO";
+        btn.className = "bg-red-600 hover:bg-red-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer";
         if (userCard) userCard.classList.remove('speaking-glow');
       } else {
-        btn.className = "bg-emerald-600 hover:bg-emerald-500 font-cyber text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg";
-        btn.innerText = "🎤 Microfone: LIGADO";
+        btn.className = "bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer";
+      }
+    }
+
+    function toggleMasterMute() {
+      isMasterMuted = !isMasterMuted;
+
+      if (localAudioStream) {
+        localAudioStream.getAudioTracks().forEach(track => track.enabled = !isMasterMuted && !isMicMuted);
+      }
+
+      document.querySelectorAll('#audio-containers audio').forEach(audio => {
+        audio.muted = isMasterMuted;
+      });
+
+      const btnMaster = document.getElementById('btn-master-mute');
+      const btnMic = document.getElementById('btn-mic');
+      const userCard = document.getElementById(`user-card-${socket.id}`);
+
+      if (isMasterMuted) {
+        btnMaster.className = "bg-red-600 hover:bg-red-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl border-2 border-red-300 cursor-pointer";
+        btnMic.className = "bg-red-600 p-3.5 rounded-xl opacity-50 cursor-not-allowed";
+        if (userCard) userCard.classList.remove('speaking-glow');
+      } else {
+        btnMaster.className = "bg-gray-700 hover:bg-gray-600 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer";
+        btnMic.className = isMicMuted ? "bg-red-600 p-3.5 rounded-xl cursor-pointer" : "bg-emerald-600 p-3.5 rounded-xl cursor-pointer";
+      }
+    }
+
+    function toggleExpandVideo(peerId) {
+      const container = document.getElementById(`video-container-${peerId}`);
+      if (container) {
+        container.classList.toggle('expanded');
+      }
+    }
+
+    function toggleFullScreenVideo(peerId) {
+      const videoElem = document.getElementById(`video-${peerId}`);
+      if (videoElem) {
+        if (videoElem.requestFullscreen) {
+          videoElem.requestFullscreen();
+        } else if (videoElem.webkitRequestFullscreen) {
+          videoElem.webkitRequestFullscreen();
+        } else if (videoElem.msRequestFullscreen) {
+          videoElem.msRequestFullscreen();
+        }
       }
     }
 
@@ -375,7 +447,7 @@
       mutedUsers[peerId] = !mutedUsers[peerId];
       const audioElem = document.getElementById(`audio-${peerId}`);
       if (audioElem) {
-        audioElem.muted = mutedUsers[peerId];
+        audioElem.muted = isMasterMuted || mutedUsers[peerId];
       }
       if (mutedUsers[peerId]) {
         const userCard = document.getElementById(`user-card-${peerId}`);
@@ -415,19 +487,23 @@
 
         const container = document.createElement('div');
         container.id = `video-container-local`;
-        container.className = "relative w-full h-full min-h-[220px] bg-black rounded-xl overflow-hidden border border-cyan-500/40 flex flex-col shadow-lg";
+        container.className = "video-box relative bg-black rounded-xl overflow-hidden border border-cyan-500/40 flex flex-col shadow-lg";
         container.innerHTML = `
-          <div class="absolute top-2 left-2 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-xs text-cyan-400 font-cyber z-10 flex items-center gap-2">
-            <span class="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded live-badge font-bold">LIVE</span>
-            📺 Sua Tela (Sendo Transmitida)
+          <div class="absolute top-2 left-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-cyan-400 font-cyber z-10 flex items-center gap-1.5">
+            <span class="bg-red-600 text-white text-[8px] px-1 py-0.2 rounded live-badge font-bold">LIVE</span>
+            Sua Tela
           </div>
-          <video id="video-local" autoplay muted playsinline class="w-full h-full object-contain"></video>
+          <div class="absolute top-2 right-2 flex gap-1 z-10">
+            <button onclick="toggleExpandVideo('local')" class="bg-black/70 hover:bg-black text-white text-xs px-2 py-0.5 rounded border border-cyan-500/50 cursor-pointer">🔲</button>
+            <button onclick="toggleFullScreenVideo('local')" class="bg-black/70 hover:bg-black text-white text-xs px-2 py-0.5 rounded border border-cyan-500/50 cursor-pointer">⛶</button>
+          </div>
+          <video id="video-local" autoplay muted playsinline class="w-full h-full object-contain cursor-pointer" onclick="toggleFullScreenVideo('local')"></video>
         `;
         document.getElementById('video-grid').appendChild(container);
         
         const videoLocalElem = document.getElementById('video-local');
         videoLocalElem.srcObject = localScreenStream;
-        videoLocalElem.muted = true; // Garante silêncio na própria pré-visualização
+        videoLocalElem.muted = true; // Impede qualquer eco da própria voz ou áudio local
 
         const videoTrack = localScreenStream.getVideoTracks()[0];
         
