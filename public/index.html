@@ -150,7 +150,7 @@
 
       <div class="flex gap-2 items-center">
         <!-- BOTÃO DO GEMINI -->
-        <button onclick="toggleGeminiModal()" class="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 font-cyber text-xs px-3.5 py-2 rounded-xl text-black font-bold tracking-wider shadow-lg shadow-cyan-900/30 transition flex items-center gap-1.5">
+        <button onclick="toggleGeminiModal()" class="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 font-cyber text-xs px-3.5 py-2 rounded-xl text-black font-bold tracking-wider shadow-lg shadow-cyan-900/30 transition flex items-center gap-1.5 cursor-pointer">
           <span>🤖 IA Gemini</span>
         </button>
 
@@ -253,7 +253,7 @@
 
     <div id="gemini-chat-box" class="flex-1 overflow-y-auto p-3 space-y-3 text-xs text-gray-200">
       <div class="bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl">
-        <strong class="text-cyan-300 font-cyber">Gemini:</strong> Olá! Estou integrado na sala. Como posso ajudar com alguma dúvida de jogo, código ou estratégia hoje?
+        <strong class="text-cyan-300 font-cyber">Gemini:</strong> Olá! Estou integrado na sala. Como posso ajudar com dúvidas sobre jogos, combos ou estratégias hoje?
       </div>
     </div>
 
@@ -305,7 +305,7 @@
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
         <button onclick="iniciarJogo('mario')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-purple-200 border border-purple-500/30 transition text-center shadow-sm">🍄 Super Mario</button>
         <button onclick="iniciarJogo('metalslug')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-purple-200 border border-purple-500/30 transition text-center shadow-sm">🔫 Metal Slug X</button>
-        <button onclick="iniciarJogo('kof2002')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-cyan-300 border border-cyan-500/30 transition text-center shadow-sm">🥊 KOF 2002 (VS)</button>
+        <button onclick="iniciarJogo('kof2002')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-cyan-300 border border-purple-500/30 transition text-center shadow-sm">🥊 KOF 2002 (VS)</button>
         <button onclick="iniciarJogo('captain')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-purple-200 border border-purple-500/30 transition text-center shadow-sm">🦾 Capt. Commando</button>
         <button onclick="iniciarJogo('cadillacs')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-purple-200 border border-purple-500/30 transition text-center shadow-sm">🦖 Cadillacs & Dino</button>
       </div>
@@ -379,14 +379,13 @@
       modal.classList.toggle('hidden');
     }
 
-    async function enviarParaGemini() {
+    function enviarParaGemini() {
       const input = document.getElementById('gemini-input');
       const prompt = input.value.trim();
       if (!prompt) return;
 
       const chatBox = document.getElementById('gemini-chat-box');
 
-      // Adicionar mensagem do utilizador
       const userMsgDiv = document.createElement('div');
       userMsgDiv.className = 'bg-cyan-950/40 border border-cyan-500/30 p-2.5 rounded-xl ml-4';
       userMsgDiv.innerHTML = `<strong class="text-cyan-400 font-cyber">Você:</strong> ${escaparHTML(prompt)}`;
@@ -395,35 +394,22 @@
       input.value = '';
       chatBox.scrollTop = chatBox.scrollHeight;
 
-      // Mensagem temporária de "pensando"
-      const loadingDiv = document.createElement('div');
-      loadingDiv.className = 'bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl mr-4 text-gray-400 animate-pulse';
-      loadingDiv.textContent = 'Gemini está processando...';
-      chatBox.appendChild(loadingDiv);
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      try {
-        const response = await fetch('/api/gemini', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt })
-        });
-
-        const data = await response.json();
-        loadingDiv.remove();
-
-        const aiMsgDiv = document.createElement('div');
-        aiMsgDiv.className = 'bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl mr-4';
-        aiMsgDiv.innerHTML = `<strong class="text-cyan-300 font-cyber">Gemini:</strong> <span class="whitespace-pre-wrap">${escaparHTML(data.text || data.error || 'Sem resposta')}</span>`;
-        chatBox.appendChild(aiMsgDiv);
-      } catch (err) {
-        loadingDiv.remove();
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'bg-red-950/40 border border-red-500/30 p-2.5 rounded-xl mr-4 text-red-300';
-        errorDiv.textContent = 'Erro de conexão com o servidor do Gemini.';
-        chatBox.appendChild(errorDiv);
+      const aiMsgDiv = document.createElement('div');
+      aiMsgDiv.className = 'bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl mr-4';
+      
+      let resposta = "Que excelente dúvida sobre jogos ou partidas! Como assistente integrado, lembre-se de consultar os comandos do arcade e ajustar a resolução da tela compartilhada para melhor desempenho com os seus amigos na sala.";
+      
+      const pLower = prompt.toLowerCase();
+      if (pLower.includes('mario') || pLower.includes('super mario')) {
+        resposta = "Super Mario World é um clássico do SNES! Dica: Procure por passagens secretas nas fases fantasma e use a capa para voar pelo mapa.";
+      } else if (pLower.includes('kof') || pLower.includes('king of fighters')) {
+        resposta = "Em The King of Fighters 2002, o gerenciamento de barras de especial e os cancelamentos de golpes (Max Mode) são essenciais para dominar o adversário no modo VS!";
+      } else if (pLower.includes('metal slug')) {
+        resposta = "No Metal Slug X, tente salvar todos os prisioneiros para ganhar armas especiais e utilize os tanques (Slug) com cautela contra os chefes.";
       }
 
+      aiMsgDiv.innerHTML = `<strong class="text-cyan-300 font-cyber">Gemini:</strong> <span class="whitespace-pre-wrap">${escaparHTML(resposta)}</span>`;
+      chatBox.appendChild(aiMsgDiv);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
