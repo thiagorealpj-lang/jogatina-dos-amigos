@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -40,7 +39,7 @@
       flex-wrap: wrap;
       gap: 1.5rem;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
     }
 
     .video-box {
@@ -49,12 +48,15 @@
       max-width: 100%;
       flex-shrink: 0;
       transition: all .3s ease;
+      order: 2;
     }
 
+    /* A live expandida sobe para o topo e ocupa largura total */
     .video-box.expanded {
-      width: 100%;
-      height: 540px;
-      max-width: 100%;
+      width: 100% !important;
+      height: 500px !important;
+      max-width: 100% !important;
+      order: 1 !important;
     }
 
     input[type=range] { accent-color: #a855f7; }
@@ -478,7 +480,6 @@
         return avisar('Essa sala já existe.');
       }
 
-      // O servidor cria a sala; aguardamos a atualização antes de entrar.
       socket.emit('create-room', { newRoomName: roomName });
 
       const waitForRoom = () => {
@@ -499,8 +500,6 @@
 
     function mudarDeSala(destination) {
       if (!socket?.connected || !destination || destination === roomId) return;
-
-      // A troca real é feita pelo servidor.
       socket.emit('switch-room', { newRoomId: destination });
     }
 
@@ -787,13 +786,28 @@
             label.className = 'absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-xs text-cyan-400 z-10';
             label.textContent = `🔴 LIVE ${peerNick}`;
 
-            const expand = document.createElement('button');
-            expand.className = 'absolute top-2 right-2 z-10 bg-gray-900 px-2 py-1 rounded text-xs';
-            expand.textContent = '⛶';
-            expand.onclick = () => {
+            // Botões de controle de tela (Expandir e Tela Cheia)
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'absolute top-2 right-2 flex gap-1 z-10';
+
+            const btnExpand = document.createElement('button');
+            btnExpand.className = 'bg-gray-900/80 hover:bg-black text-white px-2 py-1 rounded text-xs border border-purple-500/40';
+            btnExpand.textContent = '🔲';
+            btnExpand.title = 'Expandir / Reduzir';
+            btnExpand.onclick = () => {
+              box.classList.toggle('expanded');
+            };
+
+            const btnFull = document.createElement('button');
+            btnFull.className = 'bg-gray-900/80 hover:bg-black text-white px-2 py-1 rounded text-xs border border-purple-500/40';
+            btnFull.textContent = '⛶';
+            btnFull.title = 'Tela Cheia';
+            btnFull.onclick = () => {
               const video = document.getElementById(`video-${peerId}`);
               if (video?.requestFullscreen) video.requestFullscreen();
             };
+
+            controlsDiv.append(btnExpand, btnFull);
 
             const video = document.createElement('video');
             video.id = `video-${peerId}`;
@@ -801,7 +815,7 @@
             video.playsInline = true;
             video.className = 'w-full h-full object-contain';
 
-            box.append(label, expand, video);
+            box.append(label, controlsDiv, video);
             document.getElementById('video-grid').appendChild(box);
           }
 
@@ -961,6 +975,29 @@
         label.className = 'absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-xs text-cyan-400 z-10';
         label.textContent = '🔴 LIVE Sua Tela';
 
+        // Botões de controle para a tela local
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'absolute top-2 right-2 flex gap-1 z-10';
+
+        const btnExpand = document.createElement('button');
+        btnExpand.className = 'bg-gray-900/80 hover:bg-black text-white px-2 py-1 rounded text-xs border border-cyan-500/40';
+        btnExpand.textContent = '🔲';
+        btnExpand.title = 'Expandir / Reduzir';
+        btnExpand.onclick = () => {
+          box.classList.toggle('expanded');
+        };
+
+        const btnFull = document.createElement('button');
+        btnFull.className = 'bg-gray-900/80 hover:bg-black text-white px-2 py-1 rounded text-xs border border-cyan-500/40';
+        btnFull.textContent = '⛶';
+        btnFull.title = 'Tela Cheia';
+        btnFull.onclick = () => {
+          const video = document.getElementById('video-local');
+          if (video?.requestFullscreen) video.requestFullscreen();
+        };
+
+        controlsDiv.append(btnExpand, btnFull);
+
         const video = document.createElement('video');
         video.id = 'video-local';
         video.autoplay = true;
@@ -969,7 +1006,7 @@
         video.className = 'w-full h-full object-contain';
         video.srcObject = localScreenStream;
 
-        box.append(label, video);
+        box.append(label, controlsDiv, video);
         document.getElementById('video-grid').appendChild(box);
 
         for (const [peerId, peer] of Object.entries(peers)) {
