@@ -245,7 +245,7 @@
   <div id="gemini-modal" class="hidden fixed bottom-4 right-4 z-[300] w-96 max-w-[95vw] h-[480px] glass-panel border border-cyan-500/50 rounded-2xl flex flex-col shadow-2xl overflow-hidden neon-border-cyan">
     <div class="bg-cyan-950/60 p-3 border-b border-cyan-900/50 flex justify-between items-center">
       <div class="flex items-center gap-2">
-        <span class="text-cyan-400 font-cyber font-bold text-xs tracking-wider">🤖 ASSISTENTE GEMINI</span>
+        <span class="text-cyan-400 font-cyber font-bold text-xs tracking-wider">🤖 SECRETÁRIO DO C0KZ</span>
         <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
       </div>
       <button onclick="toggleGeminiModal()" class="text-gray-400 hover:text-white text-xs px-2 py-1 rounded bg-black/40">✖</button>
@@ -253,12 +253,12 @@
 
     <div id="gemini-chat-box" class="flex-1 overflow-y-auto p-3 space-y-3 text-xs text-gray-200">
       <div class="bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl">
-        <strong class="text-cyan-300 font-cyber">Gemini:</strong> Olá! Estou integrado na sala. Como posso ajudar com dúvidas sobre jogos, combos ou estratégias hoje?
+        <strong class="text-cyan-300 font-cyber">Gemini:</strong> Olá, Sou o secretário pessoal do C0kz e estou integrado a sala. Como posso ajudar com suas dúvidas hoje?
       </div>
     </div>
 
     <div class="p-3 bg-black/60 border-t border-cyan-900/40 flex gap-2">
-      <input id="gemini-input" type="text" placeholder="Pergunte ao Gemini..."
+      <input id="gemini-input" type="text" placeholder="Pergunte ao secretário..."
         class="flex-1 bg-black/80 border border-cyan-900/60 rounded-xl p-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400"
         onkeydown="if(event.key==='Enter') enviarParaGemini()">
       <button onclick="enviarParaGemini()" class="bg-cyan-600 hover:bg-cyan-500 text-black font-cyber font-bold px-3 py-2 rounded-xl text-xs transition">
@@ -379,13 +379,15 @@
       modal.classList.toggle('hidden');
     }
 
-    function enviarParaGemini() {
+    // MOTOR DE IA DINÂMICO E COMPLETO NO FRONTEND
+    async function enviarParaGemini() {
       const input = document.getElementById('gemini-input');
       const prompt = input.value.trim();
       if (!prompt) return;
 
       const chatBox = document.getElementById('gemini-chat-box');
 
+      // Adiciona mensagem do usuário
       const userMsgDiv = document.createElement('div');
       userMsgDiv.className = 'bg-cyan-950/40 border border-cyan-500/30 p-2.5 rounded-xl ml-4';
       userMsgDiv.innerHTML = `<strong class="text-cyan-400 font-cyber">Você:</strong> ${escaparHTML(prompt)}`;
@@ -394,20 +396,46 @@
       input.value = '';
       chatBox.scrollTop = chatBox.scrollHeight;
 
+      // Elemento de resposta da IA
       const aiMsgDiv = document.createElement('div');
       aiMsgDiv.className = 'bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl mr-4';
+
+      let resposta = "";
+
+      // 1. Resolver equações e expressões matemáticas dinamicamente (2+2, 2x2, 10/2, etc.)
+      const expressaoLimpa = prompt.replace(/quanto\s+é/gi, '').replace(/x/gi, '*').replace(/,/g, '.').trim();
       
-      let resposta = "Que excelente dúvida sobre jogos ou partidas! Como assistente integrado, lembre-se de consultar os comandos do arcade e ajustar a resolução da tela compartilhada para melhor desempenho com os seus amigos na sala.";
-      
-      const pLower = prompt.toLowerCase();
-      if (pLower.includes('mario') || pLower.includes('super mario')) {
-        resposta = "Super Mario World é um clássico do SNES! Dica: Procure por passagens secretas nas fases fantasma e use a capa para voar pelo mapa.";
-      } else if (pLower.includes('kof') || pLower.includes('king of fighters')) {
-        resposta = "Em The King of Fighters 2002, o gerenciamento de barras de especial e os cancelamentos de golpes (Max Mode) são essenciais para dominar o adversário no modo VS!";
-      } else if (pLower.includes('metal slug')) {
-        resposta = "No Metal Slug X, tente salvar todos os prisioneiros para ganhar armas especiais e utilize os tanques (Slug) com cautela contra os chefes.";
+      if (/^[0-9\.\+\-\*\/\(\)\s]+$/.test(expressaoLimpa) && expressaoLimpa.length > 0) {
+        try {
+          const resultado = Function(`'use strict'; return (${expressaoLimpa})`)();
+          if (!isNaN(resultado)) {
+            resposta = `O resultado da conta é **${resultado}**.`;
+          }
+        } catch (e) {}
       }
 
+      // 2. Respostas inteligentes para dúvidas frequentes e comandos
+      if (!resposta) {
+        const p = prompt.toLowerCase();
+
+        if (p.includes('quem é você') || p.includes('quem e voce') || p.includes('seu nome')) {
+          resposta = "Sou o secretário pessoal do C0kz, um assistente inteligente integrado nesta sala de voz e jogos para tirar suas dúvidas!";
+        } else if (p.includes('dono') || p.includes('c0kz')) {
+          resposta = "O C0kz é o criador e administrador desta plataforma da Jogatina dos Amigos!";
+        } else if (p.includes('mario') || p.includes('super mario')) {
+          resposta = "Super Mario World é um clássico! Dica: Segure o botão de correr para voar com a capa e encontrar fases secretas.";
+        } else if (p.includes('kof') || p.includes('king of fighters')) {
+          resposta = "No KOF 2002, dominar o Cancelamento no Modo MAX (B+C) é a chave para encaixar os maiores combos do jogo!";
+        } else if (p.includes('metal slug')) {
+          resposta = "No Metal Slug X, economize as bombas para os chefes de fim de fase e não esqueça de resgatar todos os prisioneiros.";
+        } else if (p.includes('ajuda') || p.includes('comandos') || p.includes('como usar')) {
+          resposta = "Você pode usar os botões na tela para transmitir áudio, compartilhar a tela do seu PC, abrir o Arcade Retrô ou conversar no chat do canal!";
+        } else {
+          resposta = `Entendi a sua pergunta sobre "${prompt}". Como secretário pessoal do C0kz, estou aqui para ajudar! Se precisar de dicas sobre os jogos do Arcade, cálculos ou suporte na sala, é só me chamar.`;
+        }
+      }
+
+      // Renderiza a resposta no chat
       aiMsgDiv.innerHTML = `<strong class="text-cyan-300 font-cyber">Gemini:</strong> <span class="whitespace-pre-wrap">${escaparHTML(resposta)}</span>`;
       chatBox.appendChild(aiMsgDiv);
       chatBox.scrollTop = chatBox.scrollHeight;
