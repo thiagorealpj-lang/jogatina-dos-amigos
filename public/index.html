@@ -44,6 +44,13 @@
 
     .live-badge { animation: pulse-live 1.5s infinite; }
 
+    /* Indicador de voz ativo (Neon Verde) */
+    .speaking-glow {
+      border: 1px solid #10b981 !important;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.6) !important;
+      background: rgba(16, 185, 129, 0.08) !important;
+    }
+
     #video-grid {
       display: flex;
       flex-wrap: wrap;
@@ -81,7 +88,6 @@
       cursor: not-allowed;
     }
 
-    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: rgba(5, 5, 8, 0.5); }
     ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.4); border-radius: 4px; }
@@ -300,6 +306,9 @@
     let modTargetId = null;
     let isJoining = false;
 
+    let audioContext = null;
+    let localAnalyser = null;
+
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
@@ -335,12 +344,6 @@
       alert(message);
     }
 
-    function desbloquearAudioGlobal() {
-      document.querySelectorAll('#audio-containers audio').forEach(audio => {
-        audio.play().catch(() => {});
-      });
-    }
-
     async function entrarNaSala() {
       if (isJoining) return;
 
@@ -365,6 +368,8 @@
           audio: true,
           video: false
         });
+        
+        setupLocalAudioAnalysis(localAudioStream);
       } catch (error) {
         console.warn('Microfone indisponível:', error);
       }
@@ -476,6 +481,87 @@
         currentUsersList = [];
         renderizarListaUsuarios();
       });
+    }
+
+    function setupLocalAudioAnalysis(stream) {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        localAnalyser = audioContext.createAnalyser();
+        localAnalyser.fftSize = 256;
+        source.connect(localAnalyser);
+
+        checkLocalSpeaking();
+      } catch (e) {
+        console.warn('Erro ao configurar análise de áudio local:', e);
+      }
+    }
+
+    function checkLocalSpeaking() {
+      if (!localAnalyser || !socket?.id) {
+        requestAnimationFrame(checkLocalSpeaking);
+        return;
+      }
+
+      const dataArray = new Uint8Array(localAnalyser.frequencyBinCount);
+      localAnalyser.getByteFrequencyData(dataArray);
+
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+      }
+      let average = sum / dataArray.length;
+
+      const card = document.getElementById(`user-card-${socket.id}`);
+      if (card) {
+        if (average > 12 && !isMicMuted && !isMasterMuted) {
+          card.classList.add('speaking-glow');
+        } else {
+          card.classList.remove('speaking-glow');
+        }
+      }
+
+      requestAnimationFrame(checkLocalSpeaking);
+    }
+
+    function setupRemoteAudioAnalysis(stream, peerId) {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        const checkRemote = () => {
+          if (!document.getElementById(`audio-${peerId}`)) return;
+
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteFrequencyData(dataArray);
+
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          let average = sum / dataArray.length;
+
+          const card = document.getElementById(`user-card-${peerId}`);
+          if (card) {
+            if (average > 12 && !mutedUsers[peerId] && !isMasterMuted) {
+              card.classList.add('speaking-glow');
+            } else {
+              card.classList.remove('speaking-glow');
+            }
+          }
+
+          requestAnimationFrame(checkRemote);
+        };
+
+        checkRemote();
+      } catch (e) {
+        console.warn('Erro ao configurar análise de áudio remoto:', e);
+      }
     }
 
     function isOwnerOrAdmin() {
@@ -786,6 +872,8 @@
             audio.id = `audio-${peerId}`;
             audio.autoplay = true;
             document.getElementById('audio-containers').appendChild(audio);
+
+            setupRemoteAudioAnalysis(stream, peerId);
           }
 
           audio.srcObject = stream;
