@@ -3,12 +3,9 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const { Server } = require('socket.io');
-const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
 const server = http.createServer(app);
-
-app.use(express.json());
 
 const io = new Server(server, {
   cors: { origin: '*' }
@@ -18,28 +15,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Configuração do Gemini (utiliza a variável de ambiente GEMINI_API_KEY ou podes colocar a chave diretamente se preferir)
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
-app.post('/api/gemini', async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt não fornecido.' });
-    }
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-
-    res.json({ text: response.text });
-  } catch (error) {
-    console.error('Erro na API do Gemini:', error);
-    res.status(500).json({ error: 'Erro ao processar a resposta do Gemini. Verifique se a GEMINI_API_KEY está configurada no servidor.' });
-  }
 });
 
 const PORT = process.env.PORT || 3000;
