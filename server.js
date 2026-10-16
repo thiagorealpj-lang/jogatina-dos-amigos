@@ -1,4 +1,3 @@
-
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -24,9 +23,42 @@ const OWNER_NICK = (process.env.OWNER_NICK || 'c0kz')
   .toLowerCase();
 
 const BAN_FILE = path.join(__dirname, 'banned-users.json');
+const ROOMS_FILE = path.join(__dirname, 'rooms.json');
 
-const rooms = { Geral: [] };
+// Carregar salas salvas ou iniciar com 'Geral'
+let rooms = { Geral: [] };
 const bannedUsers = new Set();
+
+try {
+  if (fs.existsSync(ROOMS_FILE)) {
+    const savedRooms = JSON.parse(
+      fs.readFileSync(ROOMS_FILE, 'utf8')
+    );
+    if (savedRooms && typeof savedRooms === 'object') {
+      // Garante que as salas carregadas começam com a lista de usuários vazia para evitar fantasmas
+      Object.keys(savedRooms).forEach(roomName => {
+        rooms[roomName] = [];
+      });
+      if (!rooms['Geral']) rooms['Geral'] = [];
+    }
+  }
+} catch (error) {
+  console.error('Erro ao carregar salas salvas:', error.message);
+}
+
+function saveRooms() {
+  try {
+    // Salva apenas os nomes das salas no disco
+    const roomNames = Object.keys(rooms);
+    fs.writeFileSync(
+      ROOMS_FILE,
+      JSON.stringify(roomNames, null, 2),
+      'utf8'
+    );
+  } catch (error) {
+    console.error('Erro ao salvar salas:', error.message);
+  }
+}
 
 try {
   if (fs.existsSync(BAN_FILE)) {
@@ -110,9 +142,7 @@ function removeFromRoom(socket) {
     io.to(oldRoom).emit('user-list', rooms[oldRoom]);
     socket.to(oldRoom).emit('user-disconnected', socket.id);
 
-    if (rooms[oldRoom].length === 0 && oldRoom !== 'Geral') {
-      delete rooms[oldRoom];
-    }
+    // Mantém as salas salvas permanentemente no disco mesmo se ficarem vazias (exceto se quiser limpar, mas agora elas persistem)
   }
 
   socket.leave(oldRoom);
@@ -124,6 +154,7 @@ function removeFromRoom(socket) {
 function joinRoom(socket, roomName) {
   if (!rooms[roomName]) {
     rooms[roomName] = [];
+    saveRooms();
   }
 
   socket.join(roomName);
@@ -156,7 +187,6 @@ function disconnectUser(socket, eventName, message) {
 
   removeFromRoom(socket);
 
-  // Dá tempo para o evento chegar ao navegador antes da desconexão.
   setTimeout(() => {
     const connectedSocket = io.sockets.sockets.get(socket.id);
 
@@ -212,6 +242,7 @@ io.on('connection', socket => {
 
     if (!rooms[roomName]) {
       rooms[roomName] = [];
+      saveRooms(); // Grava no disco
       broadcastRoomsState();
     }
   });
@@ -270,7 +301,7 @@ io.on('connection', socket => {
     });
   });
 
-  // TORNAR ADMIN — SOMENTE O DONO
+  // TORNAR ADMIN
   socket.on('make-admin', ({ targetId } = {}) => {
     if (!isOwner(socket)) {
       socket.emit(
@@ -301,7 +332,7 @@ io.on('connection', socket => {
     publishRoom(result.roomName);
   });
 
-  // MOVER USUÁRIO PARA OUTRO CANAL
+  // MOVER USUÁRIO
   socket.on('move-user', ({ targetId, destinationRoom } = {}) => {
     if (!isAdmin(socket)) {
       socket.emit(
@@ -376,7 +407,7 @@ io.on('connection', socket => {
     );
   });
 
-  // BANIR USUÁRIO — SOMENTE O DONO
+  // BANIR USUÁRIO
   socket.on('ban-user', ({ targetId } = {}) => {
     if (!isOwner(socket)) {
       socket.emit(
