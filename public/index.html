@@ -12,27 +12,37 @@
   <style>
     body {
       font-family: 'Rajdhani', sans-serif;
-      background-color: #09090b;
+      background-color: #020205;
       color: #f4f4f5;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 10% 90%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
     }
 
     .font-cyber { font-family: 'Orbitron', sans-serif; }
 
     .neon-border {
-      box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.25), inset 0 0 15px rgba(6, 182, 212, 0.1);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    .neon-border-cyan {
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+    }
+
+    .glass-panel {
+      background: rgba(9, 9, 15, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(168, 85, 247, 0.2);
     }
 
     @keyframes pulse-live {
-      0%, 100% { opacity: 1; }
-      50% { opacity: .5; }
+      0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+      50% { opacity: .4; text-shadow: none; }
     }
 
     .live-badge { animation: pulse-live 1.5s infinite; }
-
-    .speaking-glow {
-      border: 2px solid #10b981 !important;
-      box-shadow: 0 0 10px #10b981;
-    }
 
     #video-grid {
       display: flex;
@@ -67,69 +77,78 @@
     }
 
     button:disabled {
-      opacity: .5;
+      opacity: .4;
       cursor: not-allowed;
     }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(5, 5, 8, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.4); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.6); }
   </style>
 </head>
 
-<body class="min-h-screen flex flex-col bg-gradient-to-br from-gray-950 via-purple-950/20 to-black">
+<body class="min-h-screen flex flex-col">
 
   <!-- LOGIN -->
   <div id="login-screen" class="flex-1 flex items-center justify-center p-4">
-    <div class="bg-gray-900/80 border border-purple-500/30 p-8 rounded-2xl w-full max-w-md neon-border">
-      <h1 class="text-3xl font-cyber text-center font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2">
+    <div class="glass-panel p-8 rounded-2xl w-full max-w-md neon-border relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-purple-600/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-cyan-600/10 rounded-full blur-2xl pointer-events-none"></div>
+
+      <h1 class="text-3xl font-cyber text-center font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-500 mb-1 tracking-wider">
         JOGATINA DOS AMIGOS
       </h1>
 
-      <p class="text-xs font-cyber text-center text-purple-400 tracking-widest mb-6">
-        BY C0KZ
+      <p class="text-xs font-cyber text-center text-cyan-400/80 tracking-widest mb-8 uppercase">
+        // NEURAL INTERFACE BY C0KZ
       </p>
 
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-cyber text-gray-400 mb-1">TEU NICK</label>
+          <label class="block text-[11px] font-cyber text-purple-300 mb-1.5 tracking-wider">TEU NICK</label>
           <input id="input-nick" maxlength="32" type="text" placeholder="Ex: ProGamer"
-            class="w-full bg-gray-950 border border-purple-900/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
+            class="w-full bg-black/60 border border-purple-900/60 rounded-xl p-3 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition text-sm">
         </div>
 
         <div>
-          <label class="block text-xs font-cyber text-gray-400 mb-1">CÓDIGO DA SALA INICIAL</label>
+          <label class="block text-[11px] font-cyber text-purple-300 mb-1.5 tracking-wider">CÓDIGO DA SALA INICIAL</label>
           <input id="input-room" maxlength="64" type="text" placeholder="Ex: Geral"
-            class="w-full bg-gray-950 border border-purple-900/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
+            class="w-full bg-black/60 border border-purple-900/60 rounded-xl p-3 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition text-sm">
         </div>
 
-        <div class="flex items-center gap-2">
-          <input id="chk-save" type="checkbox" checked class="accent-purple-600">
-          <label for="chk-save" class="text-xs text-gray-300">Salvar minhas credenciais</label>
+        <div class="flex items-center gap-2.5 pt-1">
+          <input id="chk-save" type="checkbox" checked class="w-4 h-4 rounded accent-purple-600 bg-black">
+          <label for="chk-save" class="text-xs text-gray-300 font-medium">Sincronizar credenciais no cache neural</label>
         </div>
 
         <button id="btn-login" onclick="entrarNaSala()"
-          class="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-cyber font-bold py-3 rounded-lg">
-          ENTRAR NO SERVIDOR
+          class="w-full mt-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-400 font-cyber font-bold text-xs tracking-widest py-3.5 rounded-xl text-white shadow-lg shadow-purple-900/40 transition duration-300 transform active:scale-[0.98]">
+          INICIALIZAR CONEXÃO
         </button>
       </div>
     </div>
   </div>
 
   <!-- APLICATIVO -->
-  <div id="app-screen" class="hidden flex-1 flex flex-col min-h-screen p-2 md:p-4 gap-4 max-w-[98%] mx-auto w-full">
+  <div id="app-screen" class="hidden flex-1 flex flex-col min-h-screen p-2 md:p-4 gap-4 max-w-[99%] mx-auto w-full">
 
-    <header class="bg-gray-900/80 border border-purple-900/40 p-4 rounded-xl flex flex-wrap justify-between items-center gap-3">
+    <header class="glass-panel p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3 neon-border-cyan">
       <div class="flex flex-wrap items-baseline gap-3">
-        <h2 class="font-cyber font-bold text-cyan-400 text-lg">JOGATINA DOS AMIGOS</h2>
-        <span class="text-xs font-cyber text-purple-400">BY C0KZ</span>
-        <span class="text-xs text-gray-400">
-          Canal Atual: <strong id="display-room" class="text-purple-400">---</strong>
+        <h2 class="font-cyber font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 text-lg tracking-wider">JOGATINA DOS AMIGOS</h2>
+        <span class="text-[10px] font-cyber text-purple-400 tracking-widest">BY C0KZ</span>
+        <span class="text-xs text-gray-400 border-l border-purple-800/60 pl-3">
+          Canal Ativo: <strong id="display-room" class="text-cyan-300 font-cyber">---</strong>
         </span>
       </div>
 
       <div class="flex gap-2">
-        <button onclick="copiarLink()" class="bg-purple-950 border border-purple-500/50 font-cyber text-xs px-3 py-2 rounded-lg">
+        <button onclick="copiarLink()" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 font-cyber text-xs px-3.5 py-2 rounded-xl text-purple-200 transition">
           <span id="btn-copy-text">Copiar Convite</span>
         </button>
 
-        <button onclick="sairDaSala()" class="bg-red-950 border border-red-500/50 text-red-300 font-cyber text-xs px-3 py-2 rounded-lg">
+        <button onclick="sairDaSala()" class="bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-cyber text-xs px-3.5 py-2 rounded-xl transition">
           Desconectar
         </button>
       </div>
@@ -138,47 +157,47 @@
     <div class="flex-1 grid grid-cols-1 lg:grid-cols-6 gap-4">
 
       <!-- CANAIS -->
-      <aside class="lg:col-span-1 bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col gap-3 min-h-64">
-        <div class="flex justify-between items-center border-b border-gray-800 pb-2">
-          <span class="font-cyber text-xs text-gray-400">CANAIS DE VOZ</span>
-          <button onclick="pedirCriarSala()" class="bg-purple-950 border border-purple-500/50 text-cyan-400 px-2 rounded text-xs" title="Criar sala">＋</button>
+      <aside class="lg:col-span-1 glass-panel p-3.5 rounded-2xl flex flex-col gap-3 min-h-[280px]">
+        <div class="flex justify-between items-center border-b border-purple-900/40 pb-2.5">
+          <span class="font-cyber text-[11px] text-gray-400 tracking-wider">CANAIS DE VOZ</span>
+          <button onclick="pedirCriarSala()" class="bg-purple-950/90 hover:bg-purple-900 border border-purple-500/50 text-cyan-400 px-2.5 py-1 rounded-lg text-xs font-bold transition shadow-sm" title="Criar sala">＋</button>
         </div>
 
-        <div id="rooms-list-container" class="flex-1 overflow-y-auto space-y-2"></div>
+        <div id="rooms-list-container" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
       </aside>
 
       <!-- VÍDEOS E CONTROLES -->
-      <main class="lg:col-span-4 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between min-h-[500px]">
+      <main class="lg:col-span-4 glass-panel rounded-2xl p-4 flex flex-col justify-between min-h-[520px]">
         <div id="main-content-area" class="flex-1 flex flex-col justify-center">
           <div id="video-grid" class="flex flex-wrap gap-4 w-full content-start py-2">
-            <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-sm my-auto">
-              Nenhum compartilhamento de tela ou jogo ativo no momento.
+            <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-xs tracking-wide my-auto">
+              [ NENHUM SINAL DE VÍDEO OU JOGO ATIVO NO MOMENTO ]
             </div>
           </div>
         </div>
 
-        <div class="flex flex-col xl:flex-row justify-center items-center gap-4 mt-4 pt-3 border-t border-gray-800/50">
-          <div class="flex items-center gap-2 bg-gray-900/80 px-3 py-2 rounded-xl border border-purple-500/30">
-            <input id="chk-share-audio" type="checkbox" checked class="accent-purple-600">
-            <label for="chk-share-audio" class="text-xs text-purple-300 font-cyber">
-              Compartilhar Áudio
+        <div class="flex flex-col xl:flex-row justify-center items-center gap-4 mt-4 pt-3.5 border-t border-purple-900/30">
+          <div class="flex items-center gap-2 bg-black/40 px-3.5 py-2 rounded-xl border border-purple-500/20">
+            <input id="chk-share-audio" type="checkbox" checked class="accent-purple-600 w-4 h-4">
+            <label for="chk-share-audio" class="text-xs text-purple-200 font-cyber tracking-wide">
+              Transmitir Áudio
             </label>
           </div>
 
           <div class="flex flex-wrap items-center justify-center gap-3">
             <button id="btn-mic" onclick="toggleMic()" title="Mutar microfone"
-              class="bg-emerald-600 p-3.5 rounded-xl text-xl">🎤</button>
+              class="bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl text-lg shadow-lg shadow-emerald-900/30 transition">🎤</button>
 
             <button id="btn-master-mute" onclick="toggleMasterMute()" title="Mutar áudio geral"
-              class="bg-gray-700 p-3.5 rounded-xl text-xl">🎧</button>
+              class="bg-gray-800 hover:bg-gray-700 p-3.5 rounded-xl text-lg shadow-lg transition">🎧</button>
 
             <button id="btn-screen" onclick="toggleScreenShare()"
-              class="bg-purple-600 hover:bg-purple-500 font-cyber text-xs px-5 py-3.5 rounded-xl font-bold">
+              class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 font-cyber text-xs px-5 py-3.5 rounded-xl font-bold tracking-wider shadow-lg shadow-purple-900/40 transition">
               📺 Compartilhar Tela
             </button>
 
             <button onclick="abrirArcade()"
-              class="bg-cyan-600 hover:bg-cyan-500 font-cyber text-xs px-5 py-3.5 rounded-xl font-bold text-black">
+              class="bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 font-cyber text-xs px-5 py-3.5 rounded-xl font-bold tracking-wider text-black shadow-lg shadow-cyan-900/40 transition">
               🕹️ Arcade Retrô
             </button>
           </div>
@@ -186,24 +205,24 @@
       </main>
 
       <!-- USUÁRIOS E CHAT -->
-      <aside class="lg:col-span-1 flex flex-col gap-4 min-h-[500px]">
-        <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col min-h-64">
-          <h3 class="font-cyber text-xs text-gray-400 mb-2">
-            NESTA SALA (<span id="user-count">0</span>)
+      <aside class="lg:col-span-1 flex flex-col gap-4 min-h-[520px]">
+        <div class="glass-panel p-3.5 rounded-2xl flex flex-col min-h-[220px]">
+          <h3 class="font-cyber text-[11px] text-gray-400 mb-2.5 tracking-wider">
+            NA SALA (<span id="user-count" class="text-cyan-400 font-bold">0</span>)
           </h3>
-          <div id="users-list" class="flex-1 overflow-y-auto space-y-2 text-sm"></div>
+          <div id="users-list" class="flex-1 overflow-y-auto space-y-2 text-sm pr-1"></div>
         </div>
 
-        <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col min-h-64 flex-1">
-          <h3 class="font-cyber text-xs text-gray-400 mb-2">CHAT DO CANAL</h3>
-          <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-2 text-sm text-gray-300"></div>
+        <div class="glass-panel p-3.5 rounded-2xl flex flex-col min-h-[260px] flex-1">
+          <h3 class="font-cyber text-[11px] text-gray-400 mb-2.5 tracking-wider">CHAT DO CANAL</h3>
+          <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-3 text-xs text-gray-300 pr-1"></div>
 
           <div class="flex gap-2">
-            <input id="chat-input" type="text" maxlength="1000" placeholder="Mensagem..."
-              class="min-w-0 flex-1 bg-gray-950 border border-purple-900/40 rounded-lg p-2 text-xs text-white"
+            <input id="chat-input" type="text" maxlength="1000" placeholder="Enviar mensagem..."
+              class="min-w-0 flex-1 bg-black/60 border border-purple-900/50 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyan-400 transition"
               onkeydown="if(event.key==='Enter') enviarMsg()">
 
-            <button onclick="enviarMsg()" class="bg-cyan-600 hover:bg-cyan-500 text-xs px-3 rounded-lg font-bold">
+            <button onclick="enviarMsg()" class="bg-cyan-600 hover:bg-cyan-500 text-xs px-3.5 rounded-xl font-bold font-cyber text-black transition shadow-md">
               Enviar
             </button>
           </div>
@@ -213,50 +232,50 @@
   </div>
 
   <!-- MENU DE MODERAÇÃO -->
-  <div id="mod-menu" class="hidden bg-gray-900 border border-purple-500/60 rounded-xl p-2 shadow-2xl flex flex-col gap-1">
-    <span id="mod-target-name" class="text-[10px] text-gray-400 font-cyber px-2 py-1 border-b border-gray-800 truncate"></span>
+  <div id="mod-menu" class="hidden glass-panel border border-purple-500/50 rounded-2xl p-2.5 shadow-2xl flex flex-col gap-1.5 backdrop-blur-xl">
+    <span id="mod-target-name" class="text-[10px] text-cyan-400 font-cyber px-2 py-1.5 border-b border-purple-900/50 truncate font-bold"></span>
 
     <button id="btn-make-admin" onclick="executarAdmin()"
-      class="text-left text-xs text-cyan-400 hover:bg-gray-800 px-2 py-2 rounded">
+      class="text-left text-xs text-cyan-300 hover:bg-purple-900/40 px-2.5 py-2 rounded-xl transition font-medium">
       👑 Tornar Admin
     </button>
 
-    <div class="border-t border-gray-800 my-1"></div>
-    <span class="text-[9px] text-gray-500 font-cyber px-2">MOVER PARA CANAL:</span>
-    <div id="move-rooms-list" class="flex flex-col gap-1 max-h-28 overflow-y-auto"></div>
+    <div class="border-t border-purple-900/40 my-0.5"></div>
+    <span class="text-[9px] text-gray-400 font-cyber px-2 tracking-widest">MOVER PARA CANAL:</span>
+    <div id="move-rooms-list" class="flex flex-col gap-1 max-h-28 overflow-y-auto pr-1"></div>
 
-    <div class="border-t border-gray-800 my-1"></div>
+    <div class="border-t border-purple-900/40 my-0.5"></div>
 
-    <button onclick="executarKick()" class="text-left text-xs text-yellow-400 hover:bg-gray-800 px-2 py-2 rounded">
+    <button onclick="executarKick()" class="text-left text-xs text-yellow-300 hover:bg-yellow-950/40 px-2.5 py-2 rounded-xl transition font-medium">
       ⚡ Expulsar
     </button>
 
-    <button onclick="executarBan()" class="text-left text-xs text-red-400 hover:bg-gray-800 px-2 py-2 rounded">
+    <button onclick="executarBan()" class="text-left text-xs text-red-300 hover:bg-red-950/40 px-2.5 py-2 rounded-xl transition font-medium">
       🚫 Banir
     </button>
   </div>
 
   <!-- ARCADE RETRÔ -->
-  <div id="arcade-modal" class="hidden fixed inset-0 bg-black/90 z-[200] flex flex-col items-center justify-center p-4">
-    <div class="bg-gray-900 border border-cyan-500/50 rounded-2xl w-full max-w-5xl p-4 flex flex-col gap-3 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-gray-800 pb-2">
-        <div class="flex items-center gap-2">
-          <h3 class="font-cyber text-cyan-400 font-bold text-sm">🕹️ ARCADE RETRÔ MULTIPLAYER</h3>
-          <span class="text-[10px] bg-purple-900 text-purple-300 px-2 py-0.5 rounded font-cyber">Compartilhe a tela para jogar em dupla!</span>
+  <div id="arcade-modal" class="hidden fixed inset-0 bg-black/95 z-[200] flex flex-col items-center justify-center p-4 backdrop-blur-md">
+    <div class="glass-panel border border-cyan-500/40 rounded-3xl w-full max-w-5xl p-5 flex flex-col gap-4 shadow-2xl neon-border-cyan">
+      <div class="flex justify-between items-center border-b border-purple-900/50 pb-3">
+        <div class="flex items-center gap-3">
+          <h3 class="font-cyber text-cyan-400 font-bold text-sm tracking-wider">🕹️ ARCADE RETRÔ MULTIPLAYER</h3>
+          <span class="text-[10px] bg-purple-950/80 text-purple-300 border border-purple-500/30 px-2.5 py-1 rounded-lg font-cyber">Modo Dupla: Compartilhe a tela na sala!</span>
         </div>
-        <button onclick="fecharArcade()" class="bg-red-950 text-red-300 text-xs px-3 py-1.5 rounded-lg hover:bg-red-900 transition">Fechar ✖</button>
+        <button onclick="fecharArcade()" class="bg-red-950/80 hover:bg-red-900 text-red-300 text-xs px-4 py-2 rounded-xl border border-red-500/30 transition font-cyber">Fechar ✖</button>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-        <button onclick="iniciarJogo('mario')" class="bg-purple-950 hover:bg-purple-900 p-2 rounded-lg text-xs font-cyber text-purple-200 border border-purple-500/30 transition">🍄 Super Mario World</button>
-        <button onclick="iniciarJogo('metalslug')" class="bg-purple-950 hover:bg-purple-900 p-2 rounded-lg text-xs font-cyber text-purple-200 border border-purple-500/30 transition">🔫 Metal Slug X</button>
-        <button onclick="iniciarJogo('kof2002')" class="bg-purple-950 hover:bg-purple-900 p-2 rounded-lg text-xs font-cyber text-cyan-300 border border-cyan-500/30 transition">🥊 KOF 2002 (VS)</button>
-        <button onclick="iniciarJogo('captain')" class="bg-purple-950 hover:bg-purple-900 p-2 rounded-lg text-xs font-cyber text-purple-200 border border-purple-500/30 transition">🦾 Capt. Commando</button>
-        <button onclick="iniciarJogo('cadillacs')" class="bg-purple-950 hover:bg-purple-900 p-2 rounded-lg text-xs font-cyber text-purple-200 border border-purple-500/30 transition">🦖 Cadillacs & Dino</button>
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        <button onclick="iniciarJogo('mario')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-purple-200 border border-purple-500/30 transition text-center shadow-sm">🍄 Super Mario</button>
+        <button onclick="iniciarJogo('metalslug')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-purple-200 border border-purple-500/30 transition text-center shadow-sm">🔫 Metal Slug X</button>
+        <button onclick="iniciarJogo('kof2002')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-cyan-300 border border-cyan-500/30 transition text-center shadow-sm">🥊 KOF 2002 (VS)</button>
+        <button onclick="iniciarJogo('captain')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-purple-200 border border-purple-500/30 transition text-center shadow-sm">🦾 Capt. Commando</button>
+        <button onclick="iniciarJogo('cadillacs')" class="bg-purple-950/60 hover:bg-purple-900/80 p-2.5 rounded-xl text-xs font-cyber text-purple-200 border border-purple-500/30 transition text-center shadow-sm">🦖 Cadillacs & Dino</button>
       </div>
 
-      <div id="arcade-screen-container" class="w-full h-[520px] bg-black rounded-xl overflow-hidden flex items-center justify-center relative border border-purple-900/50">
-        <span class="text-gray-500 text-sm font-cyber">Escolha um jogo acima para começar!</span>
+      <div id="arcade-screen-container" class="w-full h-[520px] bg-black/90 rounded-2xl overflow-hidden flex items-center justify-center relative border border-purple-900/40">
+        <span class="text-gray-500 text-xs font-cyber tracking-wider">[ ESCOLHA UM JOGO ACIMA PARA INICIALIZAR ]</span>
       </div>
     </div>
   </div>
@@ -433,10 +452,10 @@
         timeSpan.className = 'text-gray-500';
         timeSpan.textContent = `[${time}] `;
 
-        nickSpan.className = 'text-purple-400';
+        nickSpan.className = 'text-cyan-400 font-semibold';
         nickSpan.textContent = `${sender}: `;
 
-        msgSpan.className = 'whitespace-pre-wrap break-words';
+        msgSpan.className = 'whitespace-pre-wrap break-words text-gray-200';
         msgSpan.textContent = msg;
 
         line.append(timeSpan, nickSpan, msgSpan);
@@ -513,8 +532,8 @@
 
       Object.keys(sharingUsers).forEach(id => delete sharingUsers[id]);
       document.getElementById('video-grid').innerHTML = `
-        <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-sm my-auto">
-          Nenhum compartilhamento de tela ou jogo ativo no momento.
+        <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-xs tracking-wide my-auto">
+          [ NENHUM SINAL DE VÍDEO OU JOGO ATIVO NO MOMENTO ]
         </div>`;
     }
 
@@ -537,13 +556,13 @@
         const active = room === roomId;
 
         const userHtml = users.map(user => `
-          <div class="pl-6 py-0.5 text-[11px] flex items-center gap-1.5 text-gray-300 truncate">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+          <div class="pl-6 py-1 text-[11px] flex items-center gap-1.5 text-gray-300 truncate">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 shadow-sm shadow-emerald-500"></span>
             <span class="truncate">${escaparHTML(user.nick)}</span>
             ${user.isOwner || user.nick.toLowerCase() === 'c0kz'
-              ? '<span class="text-[8px] bg-purple-600 px-1 rounded">DONO</span>'
+              ? '<span class="text-[8px] font-cyber bg-purple-600/80 text-white px-1 rounded">DONO</span>'
               : user.isAdmin
-                ? '<span class="text-[8px] bg-cyan-600 text-black px-1 rounded">ADMIN</span>'
+                ? '<span class="text-[8px] font-cyber bg-cyan-500 text-black px-1 rounded font-bold">ADMIN</span>'
                 : ''}
           </div>`).join('');
 
@@ -551,10 +570,10 @@
           <div class="flex flex-col gap-0.5">
             <button data-room="${escaparHTML(room)}"
               onclick="mudarDeSala(this.dataset.room)"
-              class="w-full text-left px-3 py-2 rounded-lg text-xs font-cyber flex items-center justify-between
-              ${active ? 'bg-purple-900/60 text-cyan-300 border border-purple-500/40' : 'text-gray-400 hover:bg-gray-800/50'}">
+              class="w-full text-left px-3.5 py-2 rounded-xl text-xs font-cyber flex items-center justify-between transition
+              ${active ? 'bg-purple-900/60 text-cyan-300 border border-purple-500/50 shadow-md shadow-purple-950' : 'text-gray-400 hover:bg-purple-950/30 hover:text-gray-200'}">
               <span>🔊 ${escaparHTML(room)}</span>
-              <span class="text-[10px] bg-gray-800 px-1.5 rounded">${users.length}</span>
+              <span class="text-[10px] bg-black/50 px-2 py-0.5 rounded-lg border border-purple-900/40">${users.length}</span>
             </button>
             <div>${userHtml}</div>
           </div>`;
@@ -577,32 +596,32 @@
           <div id="user-card-${user.id}"
             data-user-card
             data-user-id="${user.id}"
-            class="flex flex-col p-2 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs gap-2
-            ${canModerate ? 'cursor-pointer hover:border-purple-500/80' : ''}"
+            class="flex flex-col p-2.5 rounded-xl bg-black/40 border border-purple-900/30 text-xs gap-2 transition
+            ${canModerate ? 'cursor-pointer hover:border-cyan-400/60 hover:bg-black/60' : ''}"
             onclick="abrirMenuMod(event, this.dataset.userId)">
 
             <div class="flex items-center justify-between gap-1">
-              <div class="flex items-center gap-1 overflow-hidden">
-                <span class="text-cyan-300 font-bold truncate">${escaparHTML(user.nick)}${me ? ' (Você)' : ''}</span>
-                ${owner ? '<span class="bg-purple-600 text-white text-[8px] px-1 rounded">DONO</span>' : ''}
-                ${!owner && admin ? '<span class="bg-cyan-600 text-black text-[8px] px-1 rounded">ADMIN</span>' : ''}
+              <div class="flex items-center gap-1.5 overflow-hidden">
+                <span class="text-cyan-300 font-semibold truncate">${escaparHTML(user.nick)}${me ? ' (Você)' : ''}</span>
+                ${owner ? '<span class="bg-purple-600/80 text-white text-[8px] font-cyber px-1 rounded">DONO</span>' : ''}
+                ${!owner && admin ? '<span class="bg-cyan-500 text-black text-[8px] font-cyber px-1 rounded font-bold">ADMIN</span>' : ''}
               </div>
 
               ${!me ? `
                 <button onclick="event.stopPropagation(); toggleMuteUser('${user.id}')"
-                  class="text-[10px] border px-2 py-1 rounded shrink-0
-                  ${muted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600'}">
+                  class="text-[10px] border px-2 py-1 rounded-lg shrink-0 transition
+                  ${muted ? 'bg-red-950/80 border-red-500 text-red-300' : 'bg-gray-800/80 border-gray-700 text-gray-300'}">
                   ${muted ? '🔇' : '🔊'}
                 </button>` : ''}
             </div>
 
             ${!me ? `
-              <div class="flex items-center gap-2 pt-1 border-t border-gray-700/40"
+              <div class="flex items-center gap-2 pt-1.5 border-t border-purple-900/30"
                 onclick="event.stopPropagation()">
-                <span class="text-[10px] text-gray-400">${volume}%</span>
+                <span class="text-[10px] text-gray-400 font-cyber">${volume}%</span>
                 <input type="range" min="0" max="200" value="${volume}"
                   oninput="alterarVolumeUser('${user.id}', this.value)"
-                  class="w-full h-1 bg-gray-700 rounded-lg">
+                  class="w-full h-1 bg-gray-800 rounded-lg">
               </div>` : ''}
           </div>`;
       }).join('');
@@ -631,7 +650,7 @@
 
       Object.keys(globalRoomsData).forEach(room => {
         const button = document.createElement('button');
-        button.className = 'text-left text-[11px] text-gray-300 hover:bg-gray-800 px-2 py-1 rounded';
+        button.className = 'text-left text-[11px] text-gray-300 hover:bg-purple-950/50 px-2.5 py-1.5 rounded-xl transition';
         button.textContent = `📁 ${room}`;
         button.onclick = () => moverUtilizadorPara(userId, room);
         roomsContainer.appendChild(button);
@@ -783,17 +802,17 @@
           if (!box) {
             box = document.createElement('div');
             box.id = `video-container-${peerId}`;
-            box.className = 'video-box relative bg-black rounded-xl overflow-hidden border border-purple-500/40';
+            box.className = 'video-box relative bg-black rounded-2xl overflow-hidden border border-purple-500/40 shadow-xl';
 
             const label = document.createElement('div');
-            label.className = 'absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-xs text-cyan-400 z-10';
+            label.className = 'absolute top-2.5 left-2.5 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl text-xs font-cyber text-cyan-400 z-10 border border-cyan-500/30';
             label.textContent = `🔴 LIVE ${peerNick}`;
 
             const controlsDiv = document.createElement('div');
-            controlsDiv.className = 'absolute top-2 right-2 flex gap-1 z-10';
+            controlsDiv.className = 'absolute top-2.5 right-2.5 flex gap-1.5 z-10';
 
             const btnExpand = document.createElement('button');
-            btnExpand.className = 'bg-gray-900/80 hover:bg-black text-white px-2 py-1 rounded text-xs border border-purple-500/40';
+            btnExpand.className = 'bg-black/70 hover:bg-black text-white px-2.5 py-1 rounded-xl text-xs border border-purple-500/40 transition';
             btnExpand.textContent = '🔲';
             btnExpand.title = 'Expandir / Reduzir';
             btnExpand.onclick = () => {
@@ -801,7 +820,7 @@
             };
 
             const btnFull = document.createElement('button');
-            btnFull.className = 'bg-gray-900/80 hover:bg-black text-white px-2 py-1 rounded text-xs border border-purple-500/40';
+            btnFull.className = 'bg-black/70 hover:bg-black text-white px-2.5 py-1 rounded-xl text-xs border border-purple-500/40 transition';
             btnFull.textContent = '⛶';
             btnFull.title = 'Tela Cheia';
             btnFull.onclick = () => {
@@ -869,8 +888,8 @@
 
       const button = document.getElementById('btn-mic');
       button.className = isMicMuted
-        ? 'bg-red-600 p-3.5 rounded-xl text-xl'
-        : 'bg-emerald-600 p-3.5 rounded-xl text-xl';
+        ? 'bg-red-600 hover:bg-red-500 p-3.5 rounded-xl text-lg shadow-lg shadow-red-900/30 transition'
+        : 'bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl text-lg shadow-lg shadow-emerald-900/30 transition';
 
       button.textContent = isMicMuted ? '🔇' : '🎤';
     }
@@ -890,8 +909,8 @@
 
       const button = document.getElementById('btn-master-mute');
       button.className = isMasterMuted
-        ? 'bg-red-600 p-3.5 rounded-xl text-xl'
-        : 'bg-gray-700 p-3.5 rounded-xl text-xl';
+        ? 'bg-red-600 hover:bg-red-500 p-3.5 rounded-xl text-lg shadow-lg shadow-red-900/30 transition'
+        : 'bg-gray-800 hover:bg-gray-700 p-3.5 rounded-xl text-lg shadow-lg transition';
     }
 
     function toggleMuteUser(peerId) {
@@ -971,17 +990,17 @@
 
         const box = document.createElement('div');
         box.id = 'video-container-local';
-        box.className = 'video-box relative bg-black rounded-xl overflow-hidden border border-cyan-500/40';
+        box.className = 'video-box relative bg-black rounded-2xl overflow-hidden border border-cyan-500/40 shadow-xl';
 
         const label = document.createElement('div');
-        label.className = 'absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-xs text-cyan-400 z-10';
+        label.className = 'absolute top-2.5 left-2.5 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl text-xs font-cyber text-cyan-400 z-10 border border-cyan-500/30';
         label.textContent = '🔴 LIVE Sua Tela';
 
         const controlsDiv = document.createElement('div');
-        controlsDiv.className = 'absolute top-2 right-2 flex gap-1 z-10';
+        controlsDiv.className = 'absolute top-2.5 right-2.5 flex gap-1.5 z-10';
 
         const btnExpand = document.createElement('button');
-        btnExpand.className = 'bg-gray-900/80 hover:bg-black text-white px-2 py-1 rounded text-xs border border-cyan-500/40';
+        btnExpand.className = 'bg-black/70 hover:bg-black text-white px-2.5 py-1 rounded-xl text-xs border border-cyan-500/40 transition';
         btnExpand.textContent = '🔲';
         btnExpand.title = 'Expandir / Reduzir';
         btnExpand.onclick = () => {
@@ -989,7 +1008,7 @@
         };
 
         const btnFull = document.createElement('button');
-        btnFull.className = 'bg-gray-900/80 hover:bg-black text-white px-2 py-1 rounded text-xs border border-cyan-500/40';
+        btnFull.className = 'bg-black/70 hover:bg-black text-white px-2.5 py-1 rounded-xl text-xs border border-cyan-500/40 transition';
         btnFull.textContent = '⛶';
         btnFull.title = 'Tela Cheia';
         btnFull.onclick = () => {
@@ -1054,8 +1073,8 @@
       } else if (!hasVideo && !message) {
         message = document.createElement('div');
         message.id = 'no-shares-msg';
-        message.className = 'w-full text-center text-gray-500 font-cyber text-sm my-auto';
-        message.textContent = 'Nenhum compartilhamento de tela ou jogo ativo no momento.';
+        message.className = 'w-full text-center text-gray-500 font-cyber text-xs tracking-wide my-auto';
+        message.textContent = '[ NENHUM SINAL DE VÍDEO OU JOGO ATIVO NO MOMENTO ]';
         grid.appendChild(message);
       }
     }
@@ -1102,11 +1121,10 @@
     function fecharArcade() {
       document.getElementById('arcade-modal').classList.add('hidden');
       document.getElementById('arcade-screen-container').innerHTML =
-        '<span class="text-gray-500 text-sm font-cyber">Escolha um jogo acima para começar!</span>';
+        '<span class="text-gray-500 text-xs font-cyber tracking-wider">[ ESCOLHA UM JOGO ACIMA PARA INICIALIZAR ]</span>';
     }
 
     function iniciarJogo(type) {
-      // Links diretos corrigidos e validados para carregar exatamente os jogos pedidos
       const urls = {
         mario: 'https://snesfun.com/play/super-mario-world/183',
         metalslug: 'https://www.retrogames.cc/embed/9355-metal-slug-x-super-vehicle-001-iii.html',
