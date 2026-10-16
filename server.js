@@ -3,9 +3,12 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const { Server } = require('socket.io');
+const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
 const server = http.createServer(app);
+
+app.use(express.json());
 
 const io = new Server(server, {
   cors: { origin: '*' }
@@ -17,6 +20,28 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Configuração do Gemini (utiliza a variável de ambiente GEMINI_API_KEY ou podes colocar a chave diretamente se preferir)
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+
+app.post('/api/gemini', async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt não fornecido.' });
+    }
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    res.json({ text: response.text });
+  } catch (error) {
+    console.error('Erro na API do Gemini:', error);
+    res.status(500).json({ error: 'Erro ao processar a resposta do Gemini. Verifique se a GEMINI_API_KEY está configurada no servidor.' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const OWNER_NICK = (process.env.OWNER_NICK || 'c0kz')
   .trim()
@@ -25,7 +50,6 @@ const OWNER_NICK = (process.env.OWNER_NICK || 'c0kz')
 const BAN_FILE = path.join(__dirname, 'banned-users.json');
 const ROOMS_FILE = path.join(__dirname, 'rooms.json');
 
-// Carregar salas salvas ou iniciar com 'Geral'
 let rooms = { Geral: [] };
 const bannedUsers = new Set();
 
@@ -35,7 +59,6 @@ try {
       fs.readFileSync(ROOMS_FILE, 'utf8')
     );
     if (savedRooms && typeof savedRooms === 'object') {
-      // Garante que as salas carregadas começam com a lista de usuários vazia para evitar fantasmas
       Object.keys(savedRooms).forEach(roomName => {
         rooms[roomName] = [];
       });
@@ -48,7 +71,6 @@ try {
 
 function saveRooms() {
   try {
-    // Salva apenas os nomes das salas no disco
     const roomNames = Object.keys(rooms);
     fs.writeFileSync(
       ROOMS_FILE,
@@ -141,8 +163,6 @@ function removeFromRoom(socket) {
 
     io.to(oldRoom).emit('user-list', rooms[oldRoom]);
     socket.to(oldRoom).emit('user-disconnected', socket.id);
-
-    // Mantém as salas salvas permanentemente no disco mesmo se ficarem vazias (exceto se quiser limpar, mas agora elas persistem)
   }
 
   socket.leave(oldRoom);
@@ -201,7 +221,6 @@ io.on('connection', socket => {
   socket.data.isAdmin = false;
   socket.data.currentRoom = null;
 
-  // ENTRAR NO SERVIDOR
   socket.on('join-room', payload => {
     if (socket.data.nick) return;
 
@@ -230,7 +249,6 @@ io.on('connection', socket => {
     joinRoom(socket, roomName);
   });
 
-  // CRIAR CANAL
   socket.on('create-room', payload => {
     if (!socket.data.nick) return;
 
@@ -242,12 +260,11 @@ io.on('connection', socket => {
 
     if (!rooms[roomName]) {
       rooms[roomName] = [];
-      saveRooms(); // Grava no disco
+      saveRooms();
       broadcastRoomsState();
     }
   });
 
-  // TROCAR DE CANAL
   socket.on('switch-room', payload => {
     if (!socket.data.nick) return;
 
@@ -269,7 +286,6 @@ io.on('connection', socket => {
     joinRoom(socket, destination);
   });
 
-  // CHAT
   socket.on('send-chat', message => {
     if (!socket.data.currentRoom) return;
     if (typeof message !== 'string') return;
@@ -287,7 +303,6 @@ io.on('connection', socket => {
     });
   });
 
-  // SINALIZAÇÃO WEBRTC
   socket.on('signal', payload => {
     if (!socket.data.nick || !payload?.to || !payload?.signal) {
       return;
@@ -301,7 +316,6 @@ io.on('connection', socket => {
     });
   });
 
-  // TORNAR ADMIN
   socket.on('make-admin', ({ targetId } = {}) => {
     if (!isOwner(socket)) {
       socket.emit(
@@ -332,7 +346,6 @@ io.on('connection', socket => {
     publishRoom(result.roomName);
   });
 
-  // MOVER USUÁRIO
   socket.on('move-user', ({ targetId, destinationRoom } = {}) => {
     if (!isAdmin(socket)) {
       socket.emit(
@@ -376,7 +389,6 @@ io.on('connection', socket => {
     });
   });
 
-  // EXPULSAR USUÁRIO
   socket.on('kick-user', ({ targetId } = {}) => {
     if (!isAdmin(socket)) {
       socket.emit(
@@ -407,7 +419,6 @@ io.on('connection', socket => {
     );
   });
 
-  // BANIR USUÁRIO
   socket.on('ban-user', ({ targetId } = {}) => {
     if (!isOwner(socket)) {
       socket.emit(
@@ -445,7 +456,6 @@ io.on('connection', socket => {
     );
   });
 
-  // DESCONECTAR
   socket.on('disconnect', () => {
     removeFromRoom(socket);
     broadcastRoomsState();
