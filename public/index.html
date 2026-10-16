@@ -1,25 +1,40 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jogatina Dos Amigos - By C0kz</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body { font-family: 'Rajdhani', sans-serif; background-color: #09090b; color: #f4f4f5; }
-    .font-cyber { font-family: 'Orbitron', sans-serif; }
-    .neon-border { box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
-    .neon-glow { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)); }
-    @keyframes pulse-live {
-      0% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.05); }
-      100% { opacity: 1; transform: scale(1); }
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background-color: #09090b;
+      color: #f4f4f5;
     }
+
+    .font-cyber { font-family: 'Orbitron', sans-serif; }
+
+    .neon-border {
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+    }
+
+    @keyframes pulse-live {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+
     .live-badge { animation: pulse-live 1.5s infinite; }
-    .speaking-glow { border: 2px solid #10b981 !important; box-shadow: 0 0 10px #10b981; }
-    
+
+    .speaking-glow {
+      border: 2px solid #10b981 !important;
+      box-shadow: 0 0 10px #10b981;
+    }
+
     #video-grid {
       display: flex;
       flex-wrap: wrap;
@@ -29,170 +44,214 @@
     }
 
     .video-box {
-      width: 320px !important;
-      height: 320px !important;
-      max-width: 320px;
-      max-height: 320px;
-      transition: all 0.3s ease;
+      width: 320px;
+      height: 320px;
+      max-width: 100%;
       flex-shrink: 0;
-      order: 2;
+      transition: all .3s ease;
     }
 
     .video-box.expanded {
-      width: 100% !important;
-      height: 540px !important;
-      max-width: 100% !important;
-      max-height: 540px !important;
-      order: 1;
+      width: 100%;
+      height: 540px;
+      max-width: 100%;
     }
 
-    input[type=range] {
-      accent-color: #a855f7;
+    input[type=range] { accent-color: #a855f7; }
+
+    #mod-menu {
+      position: fixed;
+      z-index: 100;
+      width: 190px;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-gray-950 via-purple-950/20 to-black" onclick="desbloquearAudioGlobal(); fecharMenuMod();">
 
-  <!-- Tela de Login -->
+<body class="min-h-screen flex flex-col bg-gradient-to-br from-gray-950 via-purple-950/20 to-black">
+
+  <!-- LOGIN -->
   <div id="login-screen" class="flex-1 flex items-center justify-center p-4">
-    <div class="bg-gray-900/80 border border-purple-500/30 p-8 rounded-2xl w-full max-w-md neon-border backdrop-blur-md">
+    <div class="bg-gray-900/80 border border-purple-500/30 p-8 rounded-2xl w-full max-w-md neon-border">
       <h1 class="text-3xl font-cyber text-center font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-2">
         JOGATINA DOS AMIGOS
       </h1>
-      <p class="text-xs font-cyber text-center text-purple-400 tracking-widest mb-6">BY C0KZ</p>
-      
+
+      <p class="text-xs font-cyber text-center text-purple-400 tracking-widest mb-6">
+        BY C0KZ
+      </p>
+
       <div class="space-y-4">
         <div>
           <label class="block text-xs font-cyber text-gray-400 mb-1">TEU NICK</label>
-          <input id="input-nick" type="text" placeholder="Ex: ProGamer" class="w-full bg-gray-950 border border-purple-900/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition">
+          <input id="input-nick" maxlength="32" type="text" placeholder="Ex: ProGamer"
+            class="w-full bg-gray-950 border border-purple-900/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
         </div>
+
         <div>
           <label class="block text-xs font-cyber text-gray-400 mb-1">CÓDIGO DA SALA INICIAL</label>
-          <input id="input-room" type="text" placeholder="Ex: Geral" class="w-full bg-gray-950 border border-purple-900/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition">
+          <input id="input-room" maxlength="64" type="text" placeholder="Ex: Geral"
+            class="w-full bg-gray-950 border border-purple-900/50 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
         </div>
+
         <div class="flex items-center gap-2">
-          <input id="chk-save" type="checkbox" checked class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
-          <label for="chk-save" class="text-xs text-gray-300 cursor-pointer">Salvar minhas credenciais</label>
+          <input id="chk-save" type="checkbox" checked class="accent-purple-600">
+          <label for="chk-save" class="text-xs text-gray-300">Salvar minhas credenciais</label>
         </div>
-        <button onclick="entrarNaSala()" class="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-cyber font-bold py-3 rounded-lg transition transform active:scale-95 shadow-lg cursor-pointer">
+
+        <button id="btn-login" onclick="entrarNaSala()"
+          class="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-cyber font-bold py-3 rounded-lg">
           ENTRAR NO SERVIDOR
         </button>
       </div>
     </div>
   </div>
 
-  <!-- App Principal -->
-  <div id="app-screen" class="hidden flex-1 flex flex-col h-screen p-4 gap-4 max-w-[98%] mx-auto w-full">
-    <header class="bg-gray-900/80 border border-purple-900/40 p-4 rounded-xl flex justify-between items-center backdrop-blur-md">
-      <div class="flex items-baseline gap-3">
+  <!-- APLICATIVO -->
+  <div id="app-screen" class="hidden flex-1 flex flex-col min-h-screen p-2 md:p-4 gap-4 max-w-[98%] mx-auto w-full">
+
+    <header class="bg-gray-900/80 border border-purple-900/40 p-4 rounded-xl flex flex-wrap justify-between items-center gap-3">
+      <div class="flex flex-wrap items-baseline gap-3">
         <h2 class="font-cyber font-bold text-cyan-400 text-lg">JOGATINA DOS AMIGOS</h2>
-        <span class="text-xs font-cyber text-purple-400 tracking-wider">BY C0KZ</span>
-        <span class="text-xs text-gray-400 ml-2">Canal Atual: <strong id="display-room" class="text-purple-400">---</strong></span>
+        <span class="text-xs font-cyber text-purple-400">BY C0KZ</span>
+        <span class="text-xs text-gray-400">
+          Canal Atual: <strong id="display-room" class="text-purple-400">---</strong>
+        </span>
       </div>
+
       <div class="flex gap-2">
-        <button id="btn-copy-link" onclick="copiarLink()" class="bg-purple-950 border border-purple-500/50 hover:bg-purple-900 font-cyber text-xs px-3 py-2 rounded-lg transition cursor-pointer">
+        <button onclick="copiarLink()" class="bg-purple-950 border border-purple-500/50 font-cyber text-xs px-3 py-2 rounded-lg">
           <span id="btn-copy-text">Copiar Convite</span>
         </button>
-        <button onclick="sairDaSala()" class="bg-red-950 border border-red-500/50 hover:bg-red-900 font-cyber text-xs px-3 py-2 rounded-lg transition text-red-300 cursor-pointer">
+
+        <button onclick="sairDaSala()" class="bg-red-950 border border-red-500/50 text-red-300 font-cyber text-xs px-3 py-2 rounded-lg">
           Desconectar
         </button>
       </div>
     </header>
 
-    <div class="flex-1 grid grid-cols-1 lg:grid-cols-6 gap-4 overflow-hidden pb-2">
-      
-      <!-- Lista de Canais -->
-      <div class="lg:col-span-1 bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col gap-3">
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-6 gap-4">
+
+      <!-- CANAIS -->
+      <aside class="lg:col-span-1 bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col gap-3 min-h-64">
         <div class="flex justify-between items-center border-b border-gray-800 pb-2">
           <span class="font-cyber text-xs text-gray-400">CANAIS DE VOZ</span>
-          <button onclick="pedirCriarSala()" class="bg-purple-950 border border-purple-500/50 text-cyan-400 font-bold px-2 py-0.5 rounded hover:bg-purple-900 cursor-pointer text-xs" title="Criar Nova Sala">＋</button>
+          <button onclick="pedirCriarSala()" class="bg-purple-950 border border-purple-500/50 text-cyan-400 px-2 rounded text-xs" title="Criar sala">＋</button>
         </div>
-        <div id="rooms-list-container" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
-      </div>
 
-      <!-- Grade de Vídeos / Telas / Arcade Retrô -->
-      <div class="lg:col-span-4 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between overflow-y-auto relative">
-        <div id="main-content-area" class="flex-1 flex flex-col justify-center items-center">
+        <div id="rooms-list-container" class="flex-1 overflow-y-auto space-y-2"></div>
+      </aside>
+
+      <!-- VÍDEOS E CONTROLES -->
+      <main class="lg:col-span-4 bg-gray-950/60 border border-purple-900/30 rounded-xl p-4 flex flex-col justify-between min-h-[500px]">
+        <div id="main-content-area" class="flex-1 flex flex-col justify-center">
           <div id="video-grid" class="flex flex-wrap gap-4 w-full content-start py-2">
             <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-sm my-auto">
               Nenhum compartilhamento de tela ou jogo ativo no momento.
             </div>
           </div>
         </div>
-        
-        <!-- Painel de Controles e Opção de Áudio da Live -->
-        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mt-4 pt-3 border-t border-gray-800/50">
+
+        <div class="flex flex-col xl:flex-row justify-center items-center gap-4 mt-4 pt-3 border-t border-gray-800/50">
           <div class="flex items-center gap-2 bg-gray-900/80 px-3 py-2 rounded-xl border border-purple-500/30">
-            <input id="chk-share-audio" type="checkbox" checked class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
-            <label for="chk-share-audio" class="text-xs text-purple-300 font-cyber cursor-pointer">Compartilhar Áudio do Jogo/Tela</label>
+            <input id="chk-share-audio" type="checkbox" checked class="accent-purple-600">
+            <label for="chk-share-audio" class="text-xs text-purple-300 font-cyber">
+              Compartilhar Áudio
+            </label>
           </div>
 
-          <div class="flex items-center gap-3">
-            <button id="btn-mic" onclick="toggleMic()" title="Mutar/Desmutar Microfone" class="bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
-              🎤
-            </button>
-            
-            <button id="btn-master-mute" onclick="toggleMasterMute()" title="Mutar Microfone e Áudio Geral" class="bg-gray-700 hover:bg-gray-600 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer">
-              🎧
-            </button>
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <button id="btn-mic" onclick="toggleMic()" title="Mutar microfone"
+              class="bg-emerald-600 p-3.5 rounded-xl text-xl">🎤</button>
 
-            <button id="btn-screen" onclick="toggleScreenShare()" class="bg-purple-600 hover:bg-purple-500 font-cyber text-xs px-6 py-3.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg cursor-pointer">
+            <button id="btn-master-mute" onclick="toggleMasterMute()" title="Mutar áudio geral"
+              class="bg-gray-700 p-3.5 rounded-xl text-xl">🎧</button>
+
+            <button id="btn-screen" onclick="toggleScreenShare()"
+              class="bg-purple-600 hover:bg-purple-500 font-cyber text-xs px-5 py-3.5 rounded-xl font-bold">
               📺 Compartilhar Tela
             </button>
 
-            <button onclick="abrirArcade()" class="bg-cyan-600 hover:bg-cyan-500 font-cyber text-xs px-6 py-3.5 rounded-xl transition flex items-center gap-2 font-bold shadow-lg cursor-pointer text-black">
+            <button onclick="abrirArcade()"
+              class="bg-cyan-600 hover:bg-cyan-500 font-cyber text-xs px-5 py-3.5 rounded-xl font-bold text-black">
               🕹️ Arcade Retrô
             </button>
           </div>
         </div>
-      </div>
+      </main>
 
-      <!-- Barra Lateral de Utilizadores Online -->
-      <div class="lg:col-span-1 flex flex-col gap-4 overflow-hidden">
-        <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-2/5 flex flex-col">
-          <h3 class="font-cyber text-xs text-gray-400 mb-2">NESTA SALA (<span id="user-count">0</span>)</h3>
-          <div id="users-list" class="flex-1 overflow-y-auto space-y-2 text-sm pr-1"></div>
+      <!-- USUÁRIOS E CHAT -->
+      <aside class="lg:col-span-1 flex flex-col gap-4 min-h-[500px]">
+        <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col min-h-64">
+          <h3 class="font-cyber text-xs text-gray-400 mb-2">
+            NESTA SALA (<span id="user-count">0</span>)
+          </h3>
+          <div id="users-list" class="flex-1 overflow-y-auto space-y-2 text-sm"></div>
         </div>
 
-        <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl h-3/5 flex flex-col justify-between">
+        <div class="bg-gray-900/60 border border-purple-900/30 p-3 rounded-xl flex flex-col min-h-64 flex-1">
           <h3 class="font-cyber text-xs text-gray-400 mb-2">CHAT DO CANAL</h3>
-          <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-2 text-sm text-gray-300 pr-1"></div>
+          <div id="chat-box" class="flex-1 overflow-y-auto space-y-2 mb-2 text-sm text-gray-300"></div>
+
           <div class="flex gap-2">
-            <input id="chat-input" type="text" placeholder="Mensagem..." class="flex-1 bg-gray-950 border border-purple-900/40 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500" onkeydown="if(event.key==='Enter') enviarMsg()">
-            <button onclick="enviarMsg()" class="bg-cyan-600 hover:bg-cyan-500 font-cyber text-xs px-3 rounded-lg font-bold transition cursor-pointer">Enviar</button>
+            <input id="chat-input" type="text" maxlength="1000" placeholder="Mensagem..."
+              class="min-w-0 flex-1 bg-gray-950 border border-purple-900/40 rounded-lg p-2 text-xs text-white"
+              onkeydown="if(event.key==='Enter') enviarMsg()">
+
+            <button onclick="enviarMsg()" class="bg-cyan-600 hover:bg-cyan-500 text-xs px-3 rounded-lg font-bold">
+              Enviar
+            </button>
           </div>
         </div>
-      </div>
+      </aside>
     </div>
   </div>
 
-  <!-- Menu de Moderação Pop-up -->
-  <div id="mod-menu" class="hidden absolute bg-gray-900 border border-purple-500/60 rounded-xl p-2 z-50 shadow-2xl flex flex-col gap-1 w-44 backdrop-blur-md">
-    <span id="mod-target-name" class="text-[10px] text-gray-400 font-cyber px-2 py-0.5 border-b border-gray-800 truncate"></span>
-    <button onclick="executarAdmin()" class="text-left text-xs text-cyan-400 hover:bg-gray-800 px-2 py-1 rounded transition cursor-pointer font-cyber">👑 Tornar Admin</button>
+  <!-- MENU DE MODERAÇÃO -->
+  <div id="mod-menu" class="hidden bg-gray-900 border border-purple-500/60 rounded-xl p-2 shadow-2xl flex flex-col gap-1">
+    <span id="mod-target-name" class="text-[10px] text-gray-400 font-cyber px-2 py-1 border-b border-gray-800 truncate"></span>
+
+    <button id="btn-make-admin" onclick="executarAdmin()"
+      class="text-left text-xs text-cyan-400 hover:bg-gray-800 px-2 py-2 rounded">
+      👑 Tornar Admin
+    </button>
+
     <div class="border-t border-gray-800 my-1"></div>
     <span class="text-[9px] text-gray-500 font-cyber px-2">MOVER PARA CANAL:</span>
-    <div id="move-rooms-list" class="flex flex-col gap-0.5 max-h-24 overflow-y-auto"></div>
+    <div id="move-rooms-list" class="flex flex-col gap-1 max-h-28 overflow-y-auto"></div>
+
     <div class="border-t border-gray-800 my-1"></div>
-    <button onclick="executarKick()" class="text-left text-xs text-yellow-400 hover:bg-gray-800 px-2 py-1 rounded transition cursor-pointer font-cyber">⚡ Expulsar</button>
-    <button onclick="executarBan()" class="text-left text-xs text-red-400 hover:bg-gray-800 px-2 py-1 rounded transition cursor-pointer font-cyber">🚫 Banir</button>
+
+    <button onclick="executarKick()" class="text-left text-xs text-yellow-400 hover:bg-gray-800 px-2 py-2 rounded">
+      ⚡ Expulsar
+    </button>
+
+    <button onclick="executarBan()" class="text-left text-xs text-red-400 hover:bg-gray-800 px-2 py-2 rounded">
+      🚫 Banir
+    </button>
   </div>
 
-  <!-- Modal do Arcade Retrô -->
-  <div id="arcade-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 backdrop-blur-md">
-    <div class="bg-gray-900 border border-cyan-500/50 rounded-2xl w-full max-w-4xl p-4 flex flex-col gap-3 shadow-2xl">
+  <!-- ARCADE -->
+  <div id="arcade-modal" class="hidden fixed inset-0 bg-black/90 z-[200] flex flex-col items-center justify-center p-4">
+    <div class="bg-gray-900 border border-cyan-500/50 rounded-2xl w-full max-w-4xl p-4 flex flex-col gap-3">
       <div class="flex justify-between items-center border-b border-gray-800 pb-2">
-        <h3 class="font-cyber text-cyan-400 font-bold text-base">🕹️ ARCADE RETRÔ - JOGOS CLÁSSICOS</h3>
-        <button onclick="fecharArcade()" class="bg-red-950 border border-red-500/50 text-red-300 text-xs px-3 py-1 rounded-lg hover:bg-red-900 cursor-pointer font-cyber">Fechar ✖</button>
+        <h3 class="font-cyber text-cyan-400 font-bold text-sm">🕹️ ARCADE RETRÔ</h3>
+        <button onclick="fecharArcade()" class="bg-red-950 text-red-300 text-xs px-3 py-2 rounded-lg">Fechar ✖</button>
       </div>
+
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <button onclick="iniciarJogo('pacman')" class="bg-purple-950 border border-purple-500/50 hover:bg-purple-900 font-cyber text-xs py-2 px-3 rounded-lg text-purple-300 font-bold cursor-pointer">🟡 Pac-Man</button>
-        <button onclick="iniciarJogo('tetris')" class="bg-purple-950 border border-purple-500/50 hover:bg-purple-900 font-cyber text-xs py-2 px-3 rounded-lg text-purple-300 font-bold cursor-pointer">🟦 Tetris</button>
-        <button onclick="iniciarJogo('mario')" class="bg-purple-950 border border-purple-500/50 hover:bg-purple-900 font-cyber text-xs py-2 px-3 rounded-lg text-purple-300 font-bold cursor-pointer">🍄 Super Mario Bros</button>
-        <button onclick="iniciarJogo('metalslug')" class="bg-purple-950 border border-purple-500/50 hover:bg-purple-900 font-cyber text-xs py-2 px-3 rounded-lg text-purple-300 font-bold cursor-pointer">🔫 Metal Slug X</button>
+        <button onclick="iniciarJogo('pacman')" class="bg-purple-950 p-2 rounded text-xs">🟡 Pac-Man</button>
+        <button onclick="iniciarJogo('tetris')" class="bg-purple-950 p-2 rounded text-xs">🟦 Tetris</button>
+        <button onclick="iniciarJogo('mario')" class="bg-purple-950 p-2 rounded text-xs">🍄 Super Mario</button>
+        <button onclick="iniciarJogo('metalslug')" class="bg-purple-950 p-2 rounded text-xs">🔫 Metal Slug X</button>
       </div>
-      <div id="arcade-screen-container" class="w-full h-[480px] bg-black rounded-xl overflow-hidden border border-purple-900/50 flex items-center justify-center relative">
-        <span class="text-gray-500 font-cyber text-sm">Selecione um jogo acima para começar a jogar!</span>
+
+      <div id="arcade-screen-container" class="w-full h-[480px] bg-black rounded-xl overflow-hidden flex items-center justify-center">
+        <span class="text-gray-500 text-sm">Selecione um jogo para começar!</span>
       </div>
     </div>
   </div>
@@ -200,105 +259,90 @@
   <div id="audio-containers"></div>
 
   <script>
-    let socket;
+    let socket = null;
     let localAudioStream = null;
     let localScreenStream = null;
-    let roomId = "Geral", nick;
-    let peers = {};
-    let mutedUsers = {};
-    let userVolumes = {};
-    let sharingUsers = {};
-    let bannedList = [];
+    let roomId = 'Geral';
+    let nick = '';
+
+    const peers = {};
+    const mutedUsers = {};
+    const userVolumes = {};
+    const sharingUsers = {};
     let globalRoomsData = {};
+    let currentUsersList = [];
     let isMicMuted = false;
     let isMasterMuted = false;
-    let currentUsersList = [];
     let modTargetId = null;
+    let isJoining = false;
 
     const rtcConfig = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     };
 
     window.addEventListener('DOMContentLoaded', () => {
-      const savedNick = localStorage.getItem('jogatina_nick');
-      const savedRoom = localStorage.getItem('jogatina_room');
-      if (savedNick) document.getElementById('input-nick').value = savedNick;
-      if (savedRoom) document.getElementById('input-room').value = savedRoom;
+      document.getElementById('input-nick').value =
+        localStorage.getItem('jogatina_nick') || '';
+
+      document.getElementById('input-room').value =
+        localStorage.getItem('jogatina_room') || 'Geral';
+
+      document.addEventListener('click', event => {
+        const menu = document.getElementById('mod-menu');
+
+        if (!menu.contains(event.target) &&
+            !event.target.closest('[data-user-card]')) {
+          fecharMenuMod();
+        }
+      });
     });
+
+    function escaparHTML(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[char]);
+    }
+
+    function avisar(message) {
+      alert(message);
+    }
 
     function desbloquearAudioGlobal() {
       document.querySelectorAll('#audio-containers audio').forEach(audio => {
-        audio.play().catch(e => {});
+        audio.play().catch(() => {});
       });
-    }
-
-    function abrirArcade() {
-      document.getElementById('arcade-modal').classList.remove('hidden');
-    }
-
-    function fecharArcade() {
-      document.getElementById('arcade-modal').classList.add('hidden');
-      document.getElementById('arcade-screen-container').innerHTML = '<span class="text-gray-500 font-cyber text-sm">Selecione um jogo acima para começar a jogar!</span>';
-    }
-
-    function iniciarJogo(tipo) {
-      const container = document.getElementById('arcade-screen-container');
-      let gameUrl = '';
-      if (tipo === 'pacman') gameUrl = 'https://free-classic-games.com/pacman/';
-      else if (tipo === 'tetris') gameUrl = 'https://tetris.com/play-tetris';
-      else if (tipo === 'mario') gameUrl = 'https://www.retrogames.cc/embed/19597-super-mario-bros-usa.html';
-      else if (tipo === 'metalslug') gameUrl = 'https://www.retrogames.cc/embed/9355-metal-slug-x-super-vehicle-001-iii.html';
-      container.innerHTML = `<iframe src="${gameUrl}" class="w-full h-full border-0" allowfullscreen></iframe>`;
-    }
-
-    function pedirCriarSala() {
-      const nomeNovaSala = prompt("Nome da nova sala / canal de voz:");
-      if (nomeNovaSala && nomeNovaSala.trim() !== "") {
-        socket.emit('create-room', { newRoomName: nomeNovaSala.trim() });
-        mudarDeSala(nomeNovaSala.trim());
-      }
-    }
-
-    function mudarDeSala(novaSala) {
-      if (novaSala === roomId) return;
-      Object.keys(peers).forEach(peerId => {
-        peers[peerId].pc.close();
-        delete peers[peerId];
-        const v = document.getElementById(`video-container-${peerId}`);
-        if(v) v.remove();
-        const a = document.getElementById(`audio-${peerId}`);
-        if(a) a.remove();
-      });
-      roomId = novaSala;
-      document.getElementById('display-room').innerText = roomId;
-      document.getElementById('chat-box').innerHTML = '';
-      socket.emit('switch-room', { newRoomId: roomId });
     }
 
     async function entrarNaSala() {
-      nick = document.getElementById('input-nick').value.trim();
-      roomId = document.getElementById('input-room').value.trim() || "Geral";
+      if (isJoining) return;
 
-      if (!nick) return alert('Insere o teu Nick!');
+      nick = document.getElementById('input-nick').value.trim().slice(0, 32);
+      roomId = document.getElementById('input-room').value.trim().slice(0, 64) || 'Geral';
 
-      if (bannedList.includes(nick.toLowerCase())) {
-        return alert('Você foi banido deste servidor!');
+      if (!nick) {
+        avisar('Informe seu nick!');
+        return;
       }
+
+      isJoining = true;
+      document.getElementById('btn-login').disabled = true;
 
       if (document.getElementById('chk-save').checked) {
         localStorage.setItem('jogatina_nick', nick);
         localStorage.setItem('jogatina_room', roomId);
       }
 
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('app-screen').classList.remove('hidden');
-      document.getElementById('display-room').innerText = roomId;
-
       try {
-        localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        monitorarVozLocal(localAudioStream);
-      } catch (err) {
-        console.warn('Microfone não ativado:', err);
+        localAudioStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: false
+        });
+      } catch (error) {
+        console.warn('Microfone indisponível:', error);
       }
 
       socket = io({ transports: ['websocket', 'polling'] });
@@ -307,14 +351,44 @@
         socket.emit('join-room', { roomId, nick });
       });
 
-      socket.on('update-all-rooms', (roomsData) => {
-        globalRoomsData = roomsData;
+      socket.on('connect_error', error => {
+        console.error('Erro de conexão:', error);
+        avisar('Não foi possível conectar ao servidor.');
+      });
+
+      socket.on('app-error', message => {
+        avisar(typeof message === 'string' ? message : 'Ocorreu um erro.');
+      });
+
+      socket.on('banned', data => {
+        avisar(data?.message || 'Você foi banido deste servidor.');
+        socket.disconnect();
+        location.reload();
+      });
+
+      socket.on('kicked', data => {
+        avisar(data?.message || 'Você foi expulso do servidor.');
+        socket.disconnect();
+        location.reload();
+      });
+
+      socket.on('update-all-rooms', roomsData => {
+        globalRoomsData = roomsData || {};
         renderizarListaCanais();
       });
 
-      socket.on('switched-room-success', (novaSala) => {
-        roomId = novaSala;
+      socket.on('switched-room-success', newRoom => {
+        roomId = newRoom;
         document.getElementById('display-room').innerText = roomId;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-screen').classList.remove('hidden');
+        document.getElementById('btn-login').disabled = false;
+        isJoining = false;
+      });
+
+      socket.on('user-list', users => {
+        currentUsersList = users || [];
+        renderizarListaUsuarios();
       });
 
       socket.on('user-connected', ({ peerId, nick: peerNick }) => {
@@ -322,65 +396,134 @@
       });
 
       socket.on('signal', async ({ from, signal, type, nick: peerNick }) => {
-        if (!peers[from]) {
-          criarConexao(from, peerNick, false);
-        }
-        const peer = peers[from].pc;
-        if (type === 'offer') {
-          await peer.setRemoteDescription(new RTCSessionDescription(signal));
-          const answer = await peer.createAnswer();
-          await peer.setLocalDescription(answer);
-          socket.emit('signal', { to: from, signal: answer, type: 'answer', nick });
-        } else if (type === 'answer') {
-          await peer.setRemoteDescription(new RTCSessionDescription(signal));
-        } else if (type === 'candidate') {
-          try {
-            await peer.addIceCandidate(new RTCIceCandidate(signal));
-          } catch (e) {}
+        try {
+          if (!peers[from]) criarConexao(from, peerNick, false);
+          const pc = peers[from]?.pc;
+          if (!pc) return;
+
+          if (type === 'offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('signal', {
+              to: from, signal: answer, type: 'answer', nick
+            });
+          } else if (type === 'answer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(signal));
+          } else if (type === 'candidate') {
+            await pc.addIceCandidate(new RTCIceCandidate(signal));
+          }
+        } catch (error) {
+          console.warn('Erro de sinalização:', error);
         }
       });
 
-      socket.on('user-list', (users) => {
-        currentUsersList = users;
-        renderizarListaUsuarios();
-      });
+      socket.on('receive-chat', ({ nick: sender, msg, time }) => {
+        const box = document.getElementById('chat-box');
+        const line = document.createElement('div');
+        const timeSpan = document.createElement('span');
+        const nickSpan = document.createElement('strong');
+        const msgSpan = document.createElement('span');
 
-      socket.on('receive-chat', ({ nick, msg, time }) => {
-        const chatBox = document.getElementById('chat-box');
-        chatBox.innerHTML += `<div><span class="text-gray-500">[${time}]</span> <strong class="text-purple-400">${nick}:</strong> ${msg}</div>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
+        timeSpan.className = 'text-gray-500';
+        timeSpan.textContent = `[${time}] `;
+
+        nickSpan.className = 'text-purple-400';
+        nickSpan.textContent = `${sender}: `;
+
+        msgSpan.className = 'whitespace-pre-wrap break-words';
+        msgSpan.textContent = msg;
+
+        line.append(timeSpan, nickSpan, msgSpan);
+        box.appendChild(line);
+        box.scrollTop = box.scrollHeight;
       });
 
       socket.on('force-move', ({ destinationRoom }) => {
-        alert(`Você foi movido para o canal: ${destinationRoom}`);
-        mudarDeSala(destinationRoom);
+        mudarDeSalaLocal(destinationRoom);
+        avisar(`Você foi movido para o canal: ${destinationRoom}`);
       });
 
-      socket.on('kicked', () => {
-        alert('Você foi removido da sala!');
-        location.reload();
+      socket.on('user-disconnected', peerId => {
+        removerPeer(peerId);
       });
 
-      socket.on('banned', () => {
-        alert('Você foi banido do servidor!');
-        bannedList.push(nick.toLowerCase());
-        location.reload();
-      });
-
-      socket.on('user-disconnected', (peerId) => {
-        if (peers[peerId]) {
-          peers[peerId].pc.close();
-          delete peers[peerId];
-        }
-        delete sharingUsers[peerId];
-        delete userVolumes[peerId];
-        const videoElem = document.getElementById(`video-container-${peerId}`);
-        if (videoElem) videoElem.remove();
-        const audioElem = document.getElementById(`audio-${peerId}`);
-        if (audioElem) audioElem.remove();
-        verificarTelasAtivas();
+      socket.on('disconnect', () => {
+        currentUsersList = [];
         renderizarListaUsuarios();
       });
+    }
+
+    function isOwnerOrAdmin() {
+      const me = currentUsersList.find(user => user.id === socket?.id);
+      return me?.isOwner === true ||
+        me?.nick?.toLowerCase() === 'c0kz' ||
+        me?.isAdmin === true;
+    }
+
+    function isOwner() {
+      const me = currentUsersList.find(user => user.id === socket?.id);
+      return me?.isOwner === true || me?.nick?.toLowerCase() === 'c0kz';
+    }
+
+    function pedirCriarSala() {
+      if (!socket?.connected) return avisar('Você não está conectado.');
+
+      const name = prompt('Nome da nova sala:');
+      if (!name || !name.trim()) return;
+
+      const roomName = name.trim().slice(0, 64);
+
+      if (globalRoomsData[roomName]) {
+        return avisar('Essa sala já existe.');
+      }
+
+      // O servidor cria a sala; aguardamos a atualização antes de entrar.
+      socket.emit('create-room', { newRoomName: roomName });
+
+      const waitForRoom = () => {
+        if (globalRoomsData[roomName]) {
+          mudarDeSala(roomName);
+        } else {
+          setTimeout(waitForRoom, 250);
+        }
+      };
+
+      setTimeout(waitForRoom, 250);
+      setTimeout(() => {
+        if (!globalRoomsData[roomName]) {
+          avisar('A sala não apareceu. Verifique a conexão com o servidor.');
+        }
+      }, 4000);
+    }
+
+    function mudarDeSala(destination) {
+      if (!socket?.connected || !destination || destination === roomId) return;
+
+      // A troca real é feita pelo servidor.
+      socket.emit('switch-room', { newRoomId: destination });
+    }
+
+    function limparConexoes() {
+      Object.keys(peers).forEach(removerPeer);
+
+      document.querySelectorAll('#video-grid .video-box').forEach(el => el.remove());
+
+      Object.keys(sharingUsers).forEach(id => delete sharingUsers[id]);
+      document.getElementById('video-grid').innerHTML = `
+        <div id="no-shares-msg" class="w-full text-center text-gray-500 font-cyber text-sm my-auto">
+          Nenhum compartilhamento de tela ou jogo ativo no momento.
+        </div>`;
+    }
+
+    function mudarDeSalaLocal(destination) {
+      limparConexoes();
+      roomId = destination;
+
+      document.getElementById('display-room').innerText = roomId;
+      document.getElementById('chat-box').innerHTML = '';
+      fecharMenuMod();
+      renderizarListaCanais();
     }
 
     function renderizarListaCanais() {
@@ -388,236 +531,293 @@
       const roomNames = Object.keys(globalRoomsData);
 
       container.innerHTML = roomNames.map(room => {
-        const isActive = room === roomId;
-        const usersInRoom = globalRoomsData[room] || [];
+        const users = globalRoomsData[room] || [];
+        const active = room === roomId;
 
-        const usersHtml = usersInRoom.map(u => {
-          const isOwner = u.nick.toLowerCase() === 'c0kz';
-          return `
-            <div class="pl-6 py-0.5 text-[11px] flex items-center gap-1.5 text-gray-300 truncate">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-              <span class="truncate">${u.nick}</span>
-              ${isOwner ? '<span class="text-[8px] bg-purple-600 text-white px-1 rounded font-cyber">DONO</span>' : (u.isAdmin ? '<span class="text-[8px] bg-cyan-600 text-black px-1 rounded font-cyber">ADMIN</span>' : '')}
-            </div>
-          `;
-        }).join('');
+        const userHtml = users.map(user => `
+          <div class="pl-6 py-0.5 text-[11px] flex items-center gap-1.5 text-gray-300 truncate">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+            <span class="truncate">${escaparHTML(user.nick)}</span>
+            ${user.isOwner || user.nick.toLowerCase() === 'c0kz'
+              ? '<span class="text-[8px] bg-purple-600 px-1 rounded">DONO</span>'
+              : user.isAdmin
+                ? '<span class="text-[8px] bg-cyan-600 text-black px-1 rounded">ADMIN</span>'
+                : ''}
+          </div>`).join('');
 
         return `
           <div class="flex flex-col gap-0.5">
-            <button onclick="mudarDeSala('${room}')" class="w-full text-left px-3 py-2 rounded-lg text-xs font-cyber transition cursor-pointer flex items-center justify-between ${isActive ? 'bg-purple-900/60 text-cyan-300 font-bold border border-purple-500/40' : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'}">
-              <span>🔊 ${room}</span>
-              <span class="text-[10px] bg-gray-800 px-1.5 py-0.2 rounded text-gray-400">${usersInRoom.length}</span>
+            <button data-room="${escaparHTML(room)}"
+              onclick="mudarDeSala(this.dataset.room)"
+              class="w-full text-left px-3 py-2 rounded-lg text-xs font-cyber flex items-center justify-between
+              ${active ? 'bg-purple-900/60 text-cyan-300 border border-purple-500/40' : 'text-gray-400 hover:bg-gray-800/50'}">
+              <span>🔊 ${escaparHTML(room)}</span>
+              <span class="text-[10px] bg-gray-800 px-1.5 rounded">${users.length}</span>
             </button>
-            <div class="flex flex-col">${usersHtml}</div>
-          </div>
-        `;
+            <div>${userHtml}</div>
+          </div>`;
       }).join('');
     }
 
-    function isOwnerOrAdmin() {
-      const userObj = currentUsersList.find(u => u.id === socket.id);
-      if (!userObj) return nick.toLowerCase() === 'c0kz';
-      return userObj.nick.toLowerCase() === 'c0kz' || userObj.isAdmin;
+    function renderizarListaUsuarios() {
+      const container = document.getElementById('users-list');
+      document.getElementById('user-count').innerText = currentUsersList.length;
+
+      container.innerHTML = currentUsersList.map(user => {
+        const me = user.id === socket?.id;
+        const owner = user.isOwner || user.nick.toLowerCase() === 'c0kz';
+        const admin = user.isAdmin;
+        const muted = !!mutedUsers[user.id];
+        const volume = userVolumes[user.id] ?? 100;
+        const canModerate = isOwnerOrAdmin() && !me && !owner;
+
+        return `
+          <div id="user-card-${user.id}"
+            data-user-card
+            data-user-id="${user.id}"
+            class="flex flex-col p-2 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs gap-2
+            ${canModerate ? 'cursor-pointer hover:border-purple-500/80' : ''}"
+            onclick="abrirMenuMod(event, this.dataset.userId)">
+
+            <div class="flex items-center justify-between gap-1">
+              <div class="flex items-center gap-1 overflow-hidden">
+                <span class="text-cyan-300 font-bold truncate">${escaparHTML(user.nick)}${me ? ' (Você)' : ''}</span>
+                ${owner ? '<span class="bg-purple-600 text-white text-[8px] px-1 rounded">DONO</span>' : ''}
+                ${!owner && admin ? '<span class="bg-cyan-600 text-black text-[8px] px-1 rounded">ADMIN</span>' : ''}
+              </div>
+
+              ${!me ? `
+                <button onclick="event.stopPropagation(); toggleMuteUser('${user.id}')"
+                  class="text-[10px] border px-2 py-1 rounded shrink-0
+                  ${muted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600'}">
+                  ${muted ? '🔇' : '🔊'}
+                </button>` : ''}
+            </div>
+
+            ${!me ? `
+              <div class="flex items-center gap-2 pt-1 border-t border-gray-700/40"
+                onclick="event.stopPropagation()">
+                <span class="text-[10px] text-gray-400">${volume}%</span>
+                <input type="range" min="0" max="200" value="${volume}"
+                  oninput="alterarVolumeUser('${user.id}', this.value)"
+                  class="w-full h-1 bg-gray-700 rounded-lg">
+              </div>` : ''}
+          </div>`;
+      }).join('');
     }
 
-    function abrirMenuMod(e, userId, userNick) {
-      if (!isOwnerOrAdmin() || userId === socket.id) return;
-      e.stopPropagation();
+    function abrirMenuMod(event, userId) {
+      event.stopPropagation();
+
+      if (!isOwnerOrAdmin() || userId === socket?.id) return;
+
+      const target = currentUsersList.find(user => user.id === userId);
+      if (!target) return;
+
+      if (target.isOwner || target.nick.toLowerCase() === 'c0kz') return;
+
       modTargetId = userId;
+
       const menu = document.getElementById('mod-menu');
-      document.getElementById('mod-target-name').innerText = userNick;
+      document.getElementById('mod-target-name').textContent = target.nick;
 
-      const allRooms = Object.keys(globalRoomsData);
-      const moveContainer = document.getElementById('move-rooms-list');
-      moveContainer.innerHTML = allRooms.map(r => `
-        <button onclick="moverUtilizadorPara('${userId}', '${r}')" class="text-left text-[11px] text-gray-300 hover:bg-gray-800 px-2 py-0.5 rounded transition cursor-pointer">📁 ${r}</button>
-      `).join('');
+      const adminButton = document.getElementById('btn-make-admin');
+      adminButton.style.display = isOwner() && !target.isAdmin ? 'block' : 'none';
 
-      menu.style.top = `${e.clientY + 5}px`;
-      menu.style.left = `${e.clientX - 100}px`;
+      const roomsContainer = document.getElementById('move-rooms-list');
+      roomsContainer.innerHTML = '';
+
+      Object.keys(globalRoomsData).forEach(room => {
+        const button = document.createElement('button');
+        button.className = 'text-left text-[11px] text-gray-300 hover:bg-gray-800 px-2 py-1 rounded';
+        button.textContent = `📁 ${room}`;
+        button.onclick = () => moverUtilizadorPara(userId, room);
+        roomsContainer.appendChild(button);
+      });
+
       menu.classList.remove('hidden');
+
+      const x = Math.min(event.clientX, window.innerWidth - 205);
+      const y = Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 10);
+
+      menu.style.left = `${Math.max(5, x)}px`;
+      menu.style.top = `${Math.max(5, y)}px`;
     }
 
     function fecharMenuMod() {
       document.getElementById('mod-menu').classList.add('hidden');
+      modTargetId = null;
     }
 
     function executarAdmin() {
-      if (modTargetId && socket) socket.emit('make-admin', { targetId: modTargetId });
+      if (!modTargetId || !socket?.connected) return;
+      socket.emit('make-admin', { targetId: modTargetId });
       fecharMenuMod();
     }
 
-    function moverUtilizadorPara(targetId, destRoom) {
-      if (targetId && socket) socket.emit('move-user', { targetId, destinationRoom: destRoom });
+    function moverUtilizadorPara(targetId, destinationRoom) {
+      if (!targetId || !socket?.connected) return;
+
+      if (destinationRoom === roomId) {
+        avisar('O usuário já está nesse canal.');
+        fecharMenuMod();
+        return;
+      }
+
+      socket.emit('move-user', {
+        targetId,
+        destinationRoom
+      });
+
       fecharMenuMod();
     }
 
     function executarKick() {
-      if (modTargetId && socket) socket.emit('kick-user', { targetId: modTargetId });
+      if (!modTargetId || !socket?.connected) return;
+
+      const target = currentUsersList.find(user => user.id === modTargetId);
+      if (!target) return fecharMenuMod();
+
+      if (!confirm(`Tem certeza que deseja expulsar ${target.nick}?`)) return;
+
+      socket.emit('kick-user', { targetId: modTargetId });
       fecharMenuMod();
     }
 
     function executarBan() {
-      if (modTargetId && socket) socket.emit('ban-user', { targetId: modTargetId });
+      if (!modTargetId || !socket?.connected) return;
+
+      const target = currentUsersList.find(user => user.id === modTargetId);
+      if (!target) return fecharMenuMod();
+
+      if (!isOwner()) {
+        avisar('Somente o dono pode banir usuários.');
+        fecharMenuMod();
+        return;
+      }
+
+      if (!confirm(`Tem certeza que deseja banir ${target.nick}?`)) return;
+
+      socket.emit('ban-user', { targetId: modTargetId });
       fecharMenuMod();
     }
 
-    function monitorarVozLocal(stream) {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const analyser = audioCtx.createAnalyser();
-        const microphone = audioCtx.createMediaStreamSource(stream);
-        microphone.connect(analyser);
-        analyser.fftSize = 512;
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    function removerPeer(peerId) {
+      if (peers[peerId]) {
+        peers[peerId].pc.close();
+        delete peers[peerId];
+      }
 
-        setInterval(() => {
-          if (isMicMuted || isMasterMuted) return;
-          analyser.getByteFrequencyData(dataArray);
-          let sum = dataArray.reduce((a, b) => a + b, 0);
-          let average = sum / dataArray.length;
-          const userCard = document.getElementById(`user-card-${socket.id}`);
-          if (userCard) {
-            if (average > 12) userCard.classList.add('speaking-glow');
-            else userCard.classList.remove('speaking-glow');
-          }
-        }, 150);
-      } catch (e) {}
-    }
+      const video = document.getElementById(`video-container-${peerId}`);
+      if (video) video.remove();
 
-    function monitorarVozRemota(stream, peerId) {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const analyser = audioCtx.createAnalyser();
-        const source = audioCtx.createMediaStreamSource(stream);
-        source.connect(analyser);
-        analyser.fftSize = 512;
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const audio = document.getElementById(`audio-${peerId}`);
+      if (audio) audio.remove();
 
-        setInterval(() => {
-          if (mutedUsers[peerId] || isMasterMuted) return;
-          analyser.getByteFrequencyData(dataArray);
-          let sum = dataArray.reduce((a, b) => a + b, 0);
-          let average = sum / dataArray.length;
-          const userCard = document.getElementById(`user-card-${peerId}`);
-          if (userCard) {
-            if (average > 10) userCard.classList.add('speaking-glow');
-            else userCard.classList.remove('speaking-glow');
-          }
-        }, 150);
-      } catch (e) {}
-    }
+      delete sharingUsers[peerId];
+      delete mutedUsers[peerId];
+      delete userVolumes[peerId];
 
-    function renderizarListaUsuarios() {
-      document.getElementById('user-count').innerText = currentUsersList.length;
-      document.getElementById('users-list').innerHTML = currentUsersList.map(u => {
-        const isMe = u.id === socket.id;
-        const isMuted = mutedUsers[u.id];
-        const isSharing = sharingUsers[u.id];
-        const currentVol = userVolumes[u.id] !== undefined ? userVolumes[u.id] : 100;
-        const isUserOwner = u.nick.toLowerCase() === 'c0kz';
-
-        return `
-          <div id="user-card-${u.id}" onclick="abrirMenuMod(event, '${u.id}', '${u.nick}')" class="flex flex-col p-2 rounded-lg bg-gray-800/60 border border-gray-700/50 text-xs transition-all gap-1.5 ${isOwnerOrAdmin() && !isMe ? 'cursor-pointer hover:border-purple-500/80' : ''}">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2 overflow-hidden">
-                <span class="text-cyan-300 font-bold truncate">${u.nick} ${isMe ? '(Você)' : ''}</span>
-                ${isUserOwner ? '<span class="bg-purple-600 text-white text-[8px] px-1 py-0.2 rounded font-cyber font-bold">DONO</span>' : (u.isAdmin ? '<span class="bg-cyan-600 text-black text-[8px] px-1 py-0.2 rounded font-cyber font-bold">ADMIN</span>' : '')}
-                ${isSharing ? '<span class="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded font-cyber live-badge font-bold">🔴 LIVE</span>' : ''}
-              </div>
-              ${!isMe ? `
-                <button onclick="event.stopPropagation(); toggleMuteUser('${u.id}')" class="${isMuted ? 'bg-red-900 border-red-500 text-red-300' : 'bg-gray-700 border-gray-600 text-gray-300'} text-[10px] border px-2 py-1 rounded transition shrink-0 cursor-pointer">
-                  ${isMuted ? '🔇 Mutado' : '🔊 Ouvindo'}
-                </button>
-              ` : ''}
-            </div>
-            ${!isMe ? `
-              <div class="flex items-center gap-2 pt-1 border-t border-gray-700/40" onclick="event.stopPropagation()">
-                <span class="text-[10px] text-gray-400">Vol: <span id="vol-text-${u.id}">${currentVol}%</span></span>
-                <input type="range" min="0" max="200" value="${currentVol}" oninput="alterarVolumeUser('${u.id}', this.value)" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }).join('');
-    }
-
-    function alterarVolumeUser(peerId, valor) {
-      userVolumes[peerId] = valor;
-      const volText = document.getElementById(`vol-text-${peerId}`);
-      if (volText) volText.innerText = `${valor}%`;
-      const audioElem = document.getElementById(`audio-${peerId}`);
-      if (audioElem) audioElem.volume = valor / 100;
+      verificarTelasAtivas();
+      renderizarListaUsuarios();
     }
 
     function criarConexao(peerId, peerNick, isInitiator) {
+      if (!peerId || peerId === socket?.id || peers[peerId]) return;
+
       const pc = new RTCPeerConnection(rtcConfig);
       peers[peerId] = { pc, nick: peerNick };
 
       pc.addTransceiver('audio', { direction: 'sendrecv' });
       pc.addTransceiver('video', { direction: 'sendrecv' });
 
-      if (localAudioStream) localAudioStream.getTracks().forEach(track => pc.addTrack(track, localAudioStream));
-      if (localScreenStream) localScreenStream.getTracks().forEach(track => pc.addTrack(track, localScreenStream));
+      if (localAudioStream) {
+        localAudioStream.getAudioTracks().forEach(track => {
+          pc.addTrack(track, localAudioStream);
+        });
+      }
 
-      pc.onicecandidate = (event) => {
-        if (event.candidate) socket.emit('signal', { to: peerId, signal: event.candidate, type: 'candidate', nick });
+      if (localScreenStream) {
+        localScreenStream.getTracks().forEach(track => {
+          pc.addTrack(track, localScreenStream);
+        });
+      }
+
+      pc.onicecandidate = event => {
+        if (event.candidate) {
+          socket.emit('signal', {
+            to: peerId,
+            signal: event.candidate,
+            type: 'candidate',
+            nick
+          });
+        }
       };
 
-      pc.ontrack = (event) => {
+      pc.ontrack = event => {
         const stream = event.streams[0] || new MediaStream([event.track]);
-        const track = event.track;
 
-        if (track.kind === 'audio') {
-          let audioElem = document.getElementById(`audio-${peerId}`);
-          if (!audioElem) {
-            audioElem = document.createElement('audio');
-            audioElem.id = `audio-${peerId}`;
-            audioElem.autoplay = true;
-            audioElem.controls = false;
-            document.getElementById('audio-containers').appendChild(audioElem);
+        if (event.track.kind === 'audio') {
+          let audio = document.getElementById(`audio-${peerId}`);
+
+          if (!audio) {
+            audio = document.createElement('audio');
+            audio.id = `audio-${peerId}`;
+            audio.autoplay = true;
+            document.getElementById('audio-containers').appendChild(audio);
           }
-          audioElem.srcObject = stream;
-          audioElem.muted = isMasterMuted || !!mutedUsers[peerId];
-          const savedVol = userVolumes[peerId] !== undefined ? userVolumes[peerId] : 100;
-          audioElem.volume = savedVol / 100;
-          audioElem.play().catch(e => {});
-          monitorarVozRemota(stream, peerId);
-        } else if (track.kind === 'video') {
+
+          audio.srcObject = stream;
+          audio.muted = isMasterMuted || !!mutedUsers[peerId];
+          audio.volume = (userVolumes[peerId] ?? 100) / 100;
+          audio.play().catch(() => {});
+        }
+
+        if (event.track.kind === 'video') {
           sharingUsers[peerId] = true;
-          renderizarListaUsuarios();
 
-          let container = document.getElementById(`video-container-${peerId}`);
-          if (!container) {
-            container = document.createElement('div');
-            container.id = `video-container-${peerId}`;
-            container.className = "video-box relative bg-black rounded-xl overflow-hidden border border-purple-500/40 flex flex-col shadow-lg";
-            container.innerHTML = `
-              <div class="absolute top-2 left-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-cyan-400 font-cyber z-10 flex items-center gap-1.5">
-                <span class="bg-red-600 text-white text-[8px] px-1 py-0.2 rounded live-badge font-bold">LIVE</span>
-                ${peerNick}
-              </div>
-              <div class="absolute top-2 right-2 flex gap-1 z-10">
-                <button onclick="toggleExpandVideo('${peerId}')" title="Expandir" class="bg-black/70 hover:bg-black text-white text-xs px-2 py-0.5 rounded border border-purple-500/50 cursor-pointer">🔲</button>
-                <button onclick="toggleFullScreenVideo('${peerId}')" title="Ecrã Completo" class="bg-black/70 hover:bg-black text-white text-xs px-2 py-0.5 rounded border border-purple-500/50 cursor-pointer">⛶</button>
-              </div>
-              <video id="video-${peerId}" autoplay playsinline class="w-full h-full object-contain cursor-pointer" onclick="toggleFullScreenVideo('${peerId}')"></video>
-            `;
-            document.getElementById('video-grid').appendChild(container);
+          let box = document.getElementById(`video-container-${peerId}`);
+
+          if (!box) {
+            box = document.createElement('div');
+            box.id = `video-container-${peerId}`;
+            box.className = 'video-box relative bg-black rounded-xl overflow-hidden border border-purple-500/40';
+
+            const label = document.createElement('div');
+            label.className = 'absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-xs text-cyan-400 z-10';
+            label.textContent = `🔴 LIVE ${peerNick}`;
+
+            const expand = document.createElement('button');
+            expand.className = 'absolute top-2 right-2 z-10 bg-gray-900 px-2 py-1 rounded text-xs';
+            expand.textContent = '⛶';
+            expand.onclick = () => {
+              const video = document.getElementById(`video-${peerId}`);
+              if (video?.requestFullscreen) video.requestFullscreen();
+            };
+
+            const video = document.createElement('video');
+            video.id = `video-${peerId}`;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.className = 'w-full h-full object-contain';
+
+            box.append(label, expand, video);
+            document.getElementById('video-grid').appendChild(box);
           }
 
-          const videoElem = document.getElementById(`video-${peerId}`);
-          videoElem.srcObject = new MediaStream([track]);
-          videoElem.onloadedmetadata = () => videoElem.play().catch(e => {});
+          const video = document.getElementById(`video-${peerId}`);
+          video.srcObject = stream;
+          video.play().catch(() => {});
 
-          verificarTelasAtivas();
-          track.onended = () => {
+          event.track.onended = () => {
+            box?.remove();
             delete sharingUsers[peerId];
-            if (container) container.remove();
             verificarTelasAtivas();
             renderizarListaUsuarios();
           };
         }
+
+        renderizarListaUsuarios();
       };
 
       if (isInitiator) {
@@ -625,172 +825,269 @@
           try {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            socket.emit('signal', { to: peerId, signal: offer, type: 'offer', nick });
-          } catch (e) {}
+
+            socket.emit('signal', {
+              to: peerId,
+              signal: offer,
+              type: 'offer',
+              nick
+            });
+          } catch (error) {
+            console.warn('Erro ao criar conexão:', error);
+          }
         };
       }
     }
 
     function toggleMic() {
-      if (!localAudioStream) return alert('Microfone não detetado.');
-      isMicMuted = !isMicMuted;
-      localAudioStream.getAudioTracks().forEach(track => track.enabled = !isMicMuted && !isMasterMuted);
-      const btn = document.getElementById('btn-mic');
-      const userCard = document.getElementById(`user-card-${socket.id}`);
-      if (isMicMuted) {
-        btn.className = "bg-red-600 hover:bg-red-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer";
-        if (userCard) userCard.classList.remove('speaking-glow');
-      } else {
-        btn.className = "bg-emerald-600 hover:bg-emerald-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer";
+      if (!localAudioStream) {
+        avisar('Microfone não disponível. Verifique as permissões do navegador.');
+        return;
       }
+
+      isMicMuted = !isMicMuted;
+
+      localAudioStream.getAudioTracks().forEach(track => {
+        track.enabled = !isMicMuted && !isMasterMuted;
+      });
+
+      const button = document.getElementById('btn-mic');
+      button.className = isMicMuted
+        ? 'bg-red-600 p-3.5 rounded-xl text-xl'
+        : 'bg-emerald-600 p-3.5 rounded-xl text-xl';
+
+      button.textContent = isMicMuted ? '🔇' : '🎤';
     }
 
     function toggleMasterMute() {
       isMasterMuted = !isMasterMuted;
-      if (localAudioStream) localAudioStream.getAudioTracks().forEach(track => track.enabled = !isMasterMuted && !isMicMuted);
-      document.querySelectorAll('#audio-containers audio').forEach(audio => { audio.muted = isMasterMuted; });
-      const btnMaster = document.getElementById('btn-master-mute');
-      const btnMic = document.getElementById('btn-mic');
-      const userCard = document.getElementById(`user-card-${socket.id}`);
-      if (isMasterMuted) {
-        btnMaster.className = "bg-red-600 hover:bg-red-500 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl border-2 border-red-300 cursor-pointer";
-        btnMic.className = "bg-red-600 p-3.5 rounded-xl opacity-50 cursor-not-allowed";
-        if (userCard) userCard.classList.remove('speaking-glow');
-      } else {
-        btnMaster.className = "bg-gray-700 hover:bg-gray-600 p-3.5 rounded-xl transition flex items-center justify-center shadow-lg text-xl cursor-pointer";
-        btnMic.className = isMicMuted ? "bg-red-600 p-3.5 rounded-xl cursor-pointer" : "bg-emerald-600 p-3.5 rounded-xl cursor-pointer";
-      }
-    }
 
-    function toggleExpandVideo(peerId) {
-      const container = document.getElementById(`video-container-${peerId}`);
-      if (container) container.classList.toggle('expanded');
-    }
-
-    function toggleFullScreenVideo(peerId) {
-      const videoElem = document.getElementById(`video-${peerId}`);
-      if (videoElem) {
-        if (videoElem.requestFullscreen) videoElem.requestFullscreen();
-        else if (videoElem.webkitRequestFullscreen) videoElem.webkitRequestFullscreen();
+      if (localAudioStream) {
+        localAudioStream.getAudioTracks().forEach(track => {
+          track.enabled = !isMasterMuted && !isMicMuted;
+        });
       }
+
+      document.querySelectorAll('#audio-containers audio').forEach(audio => {
+        audio.muted = isMasterMuted;
+      });
+
+      const button = document.getElementById('btn-master-mute');
+      button.className = isMasterMuted
+        ? 'bg-red-600 p-3.5 rounded-xl text-xl'
+        : 'bg-gray-700 p-3.5 rounded-xl text-xl';
     }
 
     function toggleMuteUser(peerId) {
       mutedUsers[peerId] = !mutedUsers[peerId];
-      const audioElem = document.getElementById(`audio-${peerId}`);
-      if (audioElem) audioElem.muted = isMasterMuted || mutedUsers[peerId];
-      if (mutedUsers[peerId]) {
-        const userCard = document.getElementById(`user-card-${peerId}`);
-        if (userCard) userCard.classList.remove('speaking-glow');
-      }
+
+      const audio = document.getElementById(`audio-${peerId}`);
+      if (audio) audio.muted = isMasterMuted || mutedUsers[peerId];
+
       renderizarListaUsuarios();
     }
 
+    function alterarVolumeUser(peerId, value) {
+      userVolumes[peerId] = Number(value);
+
+      const audio = document.getElementById(`audio-${peerId}`);
+      if (audio) audio.volume = Math.min(2, Math.max(0, Number(value) / 100));
+
+      const card = document.getElementById(`user-card-${peerId}`);
+      const text = card?.querySelector('input[type="range"]');
+
+      if (text) {
+        const label = card.querySelector('.text-gray-400');
+        if (label) label.textContent = `${value}%`;
+      }
+    }
+
     async function toggleScreenShare() {
+      if (!socket?.connected) return avisar('Você não está conectado.');
+
       if (localScreenStream) {
         localScreenStream.getTracks().forEach(track => track.stop());
         localScreenStream = null;
-        const myVideo = document.getElementById('video-container-local');
-        if (myVideo) myVideo.remove();
-        document.getElementById('btn-screen').innerText = "📺 Compartilhar Tela";
+
+        document.getElementById('btn-screen').textContent = '📺 Compartilhar Tela';
+
+        Object.entries(peers).forEach(async ([peerId, peer]) => {
+          peer.pc.getSenders().forEach(sender => {
+            if (sender.track && sender.track.kind === 'video') {
+              peer.pc.removeTrack(sender);
+            }
+          });
+
+          try {
+            const offer = await peer.pc.createOffer();
+            await peer.pc.setLocalDescription(offer);
+
+            socket.emit('signal', {
+              to: peerId,
+              signal: offer,
+              type: 'offer',
+              nick
+            });
+          } catch (error) {
+            console.warn(error);
+          }
+        });
+
+        const localBox = document.getElementById('video-container-local');
+        if (localBox) localBox.remove();
+
         delete sharingUsers[socket.id];
         renderizarListaUsuarios();
         verificarTelasAtivas();
-
-        Object.values(peers).forEach(async ({ pc }) => {
-          const senders = pc.getSenders();
-          const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-          if (videoSender) {
-            pc.removeTrack(videoSender);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-          }
-        });
         return;
       }
 
       try {
-        const shareAudio = document.getElementById('chk-share-audio').checked;
-        
-        // Pede a partilha de tela ativando opcionalmente o áudio do sistema/aba
         localScreenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: { ideal: 60, max: 60 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: shareAudio // Se marcado, captura o som do navegador/jogo com sucesso!
+          video: { frameRate: { ideal: 30, max: 60 } },
+          audio: document.getElementById('chk-share-audio').checked
         });
-        
+
+        const videoTrack = localScreenStream.getVideoTracks()[0];
+
         sharingUsers[socket.id] = true;
         renderizarListaUsuarios();
 
-        const container = document.createElement('div');
-        container.id = `video-container-local`;
-        container.className = "video-box relative bg-black rounded-xl overflow-hidden border border-cyan-500/40 flex flex-col shadow-lg";
-        container.innerHTML = `
-          <div class="absolute top-2 left-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-cyan-400 font-cyber z-10 flex items-center gap-1.5">
-            <span class="bg-red-600 text-white text-[8px] px-1 py-0.2 rounded live-badge font-bold">LIVE</span>
-            Sua Tela
-          </div>
-          <div class="absolute top-2 right-2 flex gap-1 z-10">
-            <button onclick="toggleExpandVideo('local')" class="bg-black/70 hover:bg-black text-white text-xs px-2 py-0.5 rounded border border-cyan-500/50 cursor-pointer">🔲</button>
-            <button onclick="toggleFullScreenVideo('local')" class="bg-black/70 hover:bg-black text-white text-xs px-2 py-0.5 rounded border border-cyan-500/50 cursor-pointer">⛶</button>
-          </div>
-          <video id="video-local" autoplay muted playsinline class="w-full h-full object-contain cursor-pointer" onclick="toggleFullScreenVideo('local')"></video>
-        `;
-        document.getElementById('video-grid').appendChild(container);
-        
-        const videoLocalElem = document.getElementById('video-local');
-        videoLocalElem.srcObject = localScreenStream;
-        videoLocalElem.muted = true;
+        const box = document.createElement('div');
+        box.id = 'video-container-local';
+        box.className = 'video-box relative bg-black rounded-xl overflow-hidden border border-cyan-500/40';
 
-        const videoTrack = localScreenStream.getVideoTracks()[0];
-        const audioTrack = localScreenStream.getAudioTracks()[0]; // Captura o som do jogo/aba partilhada
-        
-        for (const [peerId, { pc }] of Object.entries(peers)) {
-          // Envia a imagem da tela
-          const senderVideo = pc.addTrack(videoTrack, localScreenStream);
-          const parameters = senderVideo.getParameters();
-          if (!parameters.encodings) parameters.encodings = [{}];
-          parameters.encodings[0].maxBitrate = 4000000;
-          parameters.encodings[0].maxFramerate = 60;
-          try { await senderVideo.setParameters(parameters); } catch (e) {}
+        const label = document.createElement('div');
+        label.className = 'absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-xs text-cyan-400 z-10';
+        label.textContent = '🔴 LIVE Sua Tela';
 
-          // Se marcou para partilhar áudio e houver faixa de som da aba/jogo, envia separadamente sem tocar no microfone do chat
-          if (audioTrack) {
-            pc.addTrack(audioTrack, localScreenStream);
-          }
+        const video = document.createElement('video');
+        video.id = 'video-local';
+        video.autoplay = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.className = 'w-full h-full object-contain';
+        video.srcObject = localScreenStream;
 
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          socket.emit('signal', { to: peerId, signal: offer, type: 'offer', nick });
+        box.append(label, video);
+        document.getElementById('video-grid').appendChild(box);
+
+        for (const [peerId, peer] of Object.entries(peers)) {
+          peer.pc.addTrack(videoTrack, localScreenStream);
+
+          localScreenStream.getAudioTracks().forEach(track => {
+            peer.pc.addTrack(track, localScreenStream);
+          });
+
+          const offer = await peer.pc.createOffer();
+          await peer.pc.setLocalDescription(offer);
+
+          socket.emit('signal', {
+            to: peerId,
+            signal: offer,
+            type: 'offer',
+            nick
+          });
         }
 
-        document.getElementById('btn-screen').innerText = "🛑 Parar Partilha";
-        videoTrack.onended = () => toggleScreenShare();
+        document.getElementById('btn-screen').textContent = '🛑 Parar Partilha';
+
+        videoTrack.onended = () => {
+          if (localScreenStream) toggleScreenShare();
+        };
+
         verificarTelasAtivas();
-      } catch (err) {}
+      } catch (error) {
+        localScreenStream = null;
+        if (error.name !== 'NotAllowedError') {
+          avisar('Não foi possível compartilhar a tela.');
+        }
+      }
     }
 
     function verificarTelasAtivas() {
-      const videoGrid = document.getElementById('video-grid');
-      const noSharesMsg = document.getElementById('no-shares-msg');
-      const hasVideos = videoGrid.querySelectorAll('video').length > 0;
-      if (noSharesMsg) noSharesMsg.style.display = hasVideos ? 'none' : 'block';
+      const grid = document.getElementById('video-grid');
+      let message = document.getElementById('no-shares-msg');
+
+      const hasVideo = grid.querySelectorAll('video').length > 0;
+
+      if (hasVideo && message) {
+        message.remove();
+      } else if (!hasVideo && !message) {
+        message = document.createElement('div');
+        message.id = 'no-shares-msg';
+        message.className = 'w-full text-center text-gray-500 font-cyber text-sm my-auto';
+        message.textContent = 'Nenhum compartilhamento de tela ou jogo ativo no momento.';
+        grid.appendChild(message);
+      }
     }
 
     function enviarMsg() {
       const input = document.getElementById('chat-input');
-      if (input.value.trim()) {
-        socket.emit('send-chat', input.value.trim());
-        input.value = '';
+      const message = input.value.trim();
+
+      if (!message || !socket?.connected) return;
+
+      socket.emit('send-chat', message);
+      input.value = '';
+    }
+
+    async function copiarLink() {
+      try {
+        await navigator.clipboard.writeText(window.location.origin);
+        document.getElementById('btn-copy-text').textContent = 'Copiado!';
+        setTimeout(() => {
+          document.getElementById('btn-copy-text').textContent = 'Copiar Convite';
+        }, 2000);
+      } catch (error) {
+        avisar('Não foi possível copiar o convite. Copie o endereço do navegador.');
       }
     }
 
-    function copiarLink() {
-      navigator.clipboard.writeText(window.location.origin);
-      document.getElementById('btn-copy-text').innerText = 'Copiado!';
-      setTimeout(() => document.getElementById('btn-copy-text').innerText = 'Copiar Convite', 2000);
+    function sairDaSala() {
+      if (localScreenStream) {
+        localScreenStream.getTracks().forEach(track => track.stop());
+      }
+
+      if (localAudioStream) {
+        localAudioStream.getTracks().forEach(track => track.stop());
+      }
+
+      if (socket) socket.disconnect();
+      location.reload();
     }
 
-    function sairDaSala() { location.reload(); }
+    function abrirArcade() {
+      document.getElementById('arcade-modal').classList.remove('hidden');
+    }
+
+    function fecharArcade() {
+      document.getElementById('arcade-modal').classList.add('hidden');
+      document.getElementById('arcade-screen-container').innerHTML =
+        '<span class="text-gray-500 text-sm">Selecione um jogo para começar!</span>';
+    }
+
+    function iniciarJogo(type) {
+      const urls = {
+        pacman: 'https://free-classic-games.com/pacman/',
+        tetris: 'https://tetris.com/play-tetris',
+        mario: 'https://www.retrogames.cc/embed/19597-super-mario-bros-usa.html',
+        metalslug: 'https://www.retrogames.cc/embed/9355-metal-slug-x-super-vehicle-001-iii.html'
+      };
+
+      const container = document.getElementById('arcade-screen-container');
+      const url = urls[type];
+
+      if (!url) return;
+
+      const iframe = document.createElement('iframe');
+      iframe.src = url;
+      iframe.className = 'w-full h-full border-0';
+      iframe.allowFullscreen = true;
+      iframe.allow = 'fullscreen; autoplay';
+
+      container.replaceChildren(iframe);
+    }
   </script>
 </body>
 </html>
