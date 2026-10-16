@@ -236,13 +236,13 @@
     </button>
   </div>
 
-  <!-- ARCADE RETRÔ (COM MULTIPLAYER & JOGOS CORRETOS) -->
+  <!-- ARCADE RETRÔ -->
   <div id="arcade-modal" class="hidden fixed inset-0 bg-black/90 z-[200] flex flex-col items-center justify-center p-4">
     <div class="bg-gray-900 border border-cyan-500/50 rounded-2xl w-full max-w-5xl p-4 flex flex-col gap-3 shadow-2xl">
       <div class="flex justify-between items-center border-b border-gray-800 pb-2">
         <div class="flex items-center gap-2">
           <h3 class="font-cyber text-cyan-400 font-bold text-sm">🕹️ ARCADE RETRÔ MULTIPLAYER</h3>
-          <span class="text-[10px] bg-purple-900 text-purple-300 px-2 py-0.5 rounded font-cyber">Para 2 Jogadores na mesma sala: Compartilhe a Tela!</span>
+          <span class="text-[10px] bg-purple-900 text-purple-300 px-2 py-0.5 rounded font-cyber">Compartilhe a tela para jogar em dupla!</span>
         </div>
         <button onclick="fecharArcade()" class="bg-red-950 text-red-300 text-xs px-3 py-1.5 rounded-lg hover:bg-red-900 transition">Fechar ✖</button>
       </div>
@@ -256,7 +256,7 @@
       </div>
 
       <div id="arcade-screen-container" class="w-full h-[520px] bg-black rounded-xl overflow-hidden flex items-center justify-center relative border border-purple-900/50">
-        <span class="text-gray-500 text-sm font-cyber">Escolha um jogo acima para jogar individualmente ou em dupla!</span>
+        <span class="text-gray-500 text-sm font-cyber">Escolha um jogo acima para começar!</span>
       </div>
     </div>
   </div>
@@ -1102,17 +1102,17 @@
     function fecharArcade() {
       document.getElementById('arcade-modal').classList.add('hidden');
       document.getElementById('arcade-screen-container').innerHTML =
-        '<span class="text-gray-500 text-sm font-cyber">Escolha um jogo acima para jogar individualmente ou em dupla!</span>';
+        '<span class="text-gray-500 text-sm font-cyber">Escolha um jogo acima para começar!</span>';
     }
 
     function iniciarJogo(type) {
-      // URLs testadas e 100% funcionais sem bloqueio de iframe
+      // Links diretos corrigidos e validados para carregar exatamente os jogos pedidos
       const urls = {
         mario: 'https://snesfun.com/play/super-mario-world/183',
-        metalslug: 'https://free-classic-games.com/metal-slug-x/',
-        kof2002: 'https://www.retrogames.cc/embed/9222-the-king-of-fighters-2002-magic-plus-ii-bootleg.html',
+        metalslug: 'https://www.retrogames.cc/embed/9355-metal-slug-x-super-vehicle-001-iii.html',
+        kof2002: 'https://www.retrogames.cc/embed/20703-the-king-of-fighters-2002-challenge-to-the-ultimate-battle.html',
         captain: 'https://snesfun.com/play/captain-commando/241',
-        cadillacs: 'https://free-classic-games.com/cadillacs-and-dinosaurs/'
+        cadillacs: 'https://www.retrogames.cc/embed/9350-cadillacs-and-dinosaurs-world-930223.html'
       };
 
       const container = document.getElementById('arcade-screen-container');
