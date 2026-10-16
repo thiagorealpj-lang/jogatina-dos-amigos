@@ -44,7 +44,6 @@
 
     .live-badge { animation: pulse-live 1.5s infinite; }
 
-    /* Indicador de voz ativo (Neon Verde) */
     .speaking-glow {
       border: 1px solid #10b981 !important;
       box-shadow: 0 0 12px rgba(16, 185, 129, 0.6) !important;
@@ -138,7 +137,7 @@
   </div>
 
   <!-- APLICATIVO -->
-  <div id="app-screen" class="hidden flex-1 flex flex-col min-h-screen p-2 md:p-4 gap-4 max-w-[99%] mx-auto w-full">
+  <div id="app-screen" class="hidden flex-1 flex flex-col min-h-screen p-2 md:p-4 gap-4 max-w-[99%] mx-auto w-full relative">
 
     <header class="glass-panel p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3 neon-border-cyan">
       <div class="flex flex-wrap items-baseline gap-3">
@@ -149,7 +148,12 @@
         </span>
       </div>
 
-      <div class="flex gap-2">
+      <div class="flex gap-2 items-center">
+        <!-- BOTÃO DO GEMINI -->
+        <button onclick="toggleGeminiModal()" class="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 font-cyber text-xs px-3.5 py-2 rounded-xl text-black font-bold tracking-wider shadow-lg shadow-cyan-900/30 transition flex items-center gap-1.5">
+          <span>🤖 IA Gemini</span>
+        </button>
+
         <button onclick="copiarLink()" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 font-cyber text-xs px-3.5 py-2 rounded-xl text-purple-200 transition">
           <span id="btn-copy-text">Copiar Convite</span>
         </button>
@@ -234,6 +238,32 @@
           </div>
         </div>
       </aside>
+    </div>
+  </div>
+
+  <!-- POP-UP DO GEMINI (MINI ABA INTEGRADA) -->
+  <div id="gemini-modal" class="hidden fixed bottom-4 right-4 z-[300] w-96 max-w-[95vw] h-[480px] glass-panel border border-cyan-500/50 rounded-2xl flex flex-col shadow-2xl overflow-hidden neon-border-cyan">
+    <div class="bg-cyan-950/60 p-3 border-b border-cyan-900/50 flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <span class="text-cyan-400 font-cyber font-bold text-xs tracking-wider">🤖 ASSISTENTE GEMINI</span>
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+      </div>
+      <button onclick="toggleGeminiModal()" class="text-gray-400 hover:text-white text-xs px-2 py-1 rounded bg-black/40">✖</button>
+    </div>
+
+    <div id="gemini-chat-box" class="flex-1 overflow-y-auto p-3 space-y-3 text-xs text-gray-200">
+      <div class="bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl">
+        <strong class="text-cyan-300 font-cyber">Gemini:</strong> Olá! Estou integrado na sala. Como posso ajudar com alguma dúvida de jogo, código ou estratégia hoje?
+      </div>
+    </div>
+
+    <div class="p-3 bg-black/60 border-t border-cyan-900/40 flex gap-2">
+      <input id="gemini-input" type="text" placeholder="Pergunte ao Gemini..."
+        class="flex-1 bg-black/80 border border-cyan-900/60 rounded-xl p-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400"
+        onkeydown="if(event.key==='Enter') enviarParaGemini()">
+      <button onclick="enviarParaGemini()" class="bg-cyan-600 hover:bg-cyan-500 text-black font-cyber font-bold px-3 py-2 rounded-xl text-xs transition">
+        Perguntar
+      </button>
     </div>
   </div>
 
@@ -342,6 +372,59 @@
 
     function avisar(message) {
       alert(message);
+    }
+
+    function toggleGeminiModal() {
+      const modal = document.getElementById('gemini-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    async function enviarParaGemini() {
+      const input = document.getElementById('gemini-input');
+      const prompt = input.value.trim();
+      if (!prompt) return;
+
+      const chatBox = document.getElementById('gemini-chat-box');
+
+      // Adicionar mensagem do utilizador
+      const userMsgDiv = document.createElement('div');
+      userMsgDiv.className = 'bg-cyan-950/40 border border-cyan-500/30 p-2.5 rounded-xl ml-4';
+      userMsgDiv.innerHTML = `<strong class="text-cyan-400 font-cyber">Você:</strong> ${escaparHTML(prompt)}`;
+      chatBox.appendChild(userMsgDiv);
+
+      input.value = '';
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      // Mensagem temporária de "pensando"
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl mr-4 text-gray-400 animate-pulse';
+      loadingDiv.textContent = 'Gemini está processando...';
+      chatBox.appendChild(loadingDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      try {
+        const response = await fetch('/api/gemini', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+
+        const data = await response.json();
+        loadingDiv.remove();
+
+        const aiMsgDiv = document.createElement('div');
+        aiMsgDiv.className = 'bg-purple-950/40 border border-purple-500/30 p-2.5 rounded-xl mr-4';
+        aiMsgDiv.innerHTML = `<strong class="text-cyan-300 font-cyber">Gemini:</strong> <span class="whitespace-pre-wrap">${escaparHTML(data.text || data.error || 'Sem resposta')}</span>`;
+        chatBox.appendChild(aiMsgDiv);
+      } catch (err) {
+        loadingDiv.remove();
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'bg-red-950/40 border border-red-500/30 p-2.5 rounded-xl mr-4 text-red-300';
+        errorDiv.textContent = 'Erro de conexão com o servidor do Gemini.';
+        chatBox.appendChild(errorDiv);
+      }
+
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     async function entrarNaSala() {
